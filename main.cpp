@@ -122,8 +122,10 @@ int main(int argc, char* argv[]) {
     result = ret_optimizer.result;
 
     // Test GTSAM output  
-    test_sfm(result, Kgt, considered_poses);
+    //test_sfm(result, Kgt, considered_poses);
     reconstruct_pointcloud(result, Kgt, considered_poses);
+    Optimize_object_loc(ret_optimizer, considered_poses, Kgt);
+    
     return 0;
 }
 

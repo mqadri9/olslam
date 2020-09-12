@@ -129,6 +129,7 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
     ret_optimize ret_optimizer;
     ret_optimizer.graph = graph_cp;
     ret_optimizer.result = result;
+    ret_optimizer.landmarks3d = landmarks3d;
     return ret_optimizer;
     //cout << poses.size() << endl;;
     //cout << landmarks3d.size() << endl;
@@ -178,4 +179,179 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
 
 
     //return result;
-}    
+}   
+
+vector<worldpoint> extract_world_points(std::map<int, semantic_objects_3d> world_3d_objects){
+    vector<worldpoint> w_points_3d;
+    map<int, semantic_objects_3d>::iterator it;
+    for ( it = world_3d_objects.begin(); it != world_3d_objects.end(); it++ )
+    {
+        worldpoint tmp;
+        tmp.x3Dw = (it->second).x3Dw;
+        tmp.index = it->first;
+        w_points_3d.push_back(tmp);
+    }
+    return w_points_3d;
+}
+
+double xydist(Point3 p1, Point3 p2) {
+    float x1 = p1(0);
+    float y1 = p1(1);
+    float x2 = p2(0);
+    float y2 = p2(1);
+    return sqrt(pow(x1-x2, 2) + pow(y1-y2, 2));
+}
+
+void Optimize_object_loc(ret_optimize ret_optimizer, vector<int> considered_poses, Cal3_S2::shared_ptr Kgt) {
+    NonlinearFactorGraph graph = ret_optimizer.graph;
+    gtsam::Values result = ret_optimizer.result;
+    vector<Point3> landmarks3d = ret_optimizer.landmarks3d;   
+    cv::Mat Q;
+    float data[16] = {1.0, 0, 0, -cx, 0, 1, 0, -cy, 0, 0, 0, focal_length, 0, 0, 1.0/baseline, (cx-cxprime)/baseline};
+    Q = Mat(4, 4, CV_32FC1, &data);
+    // Each semantic_objects_3d element contains the 3D coordinates of one of the 3D projected pixels 
+    // of the semantically segmented fruitlets. It also contains a list mapping each 3D world point to its 
+    // corresponding point in each camera frame
+    std::map<int, semantic_objects_3d> world_3d_objects;
+    for(int i=0; i<considered_poses.size(); i++) {
+        vector<worldpoint> w_points_3d;
+        string disparity_path = data_folder + "/frame"+  to_string(considered_poses[i]) + ".jpg";
+        string img_path_target = image_folder + "/frame" + to_string(considered_poses[i]) + ".jpg";
+        //cout << "IMAGES FILE " << img_path_target << endl;
+        //cout << "disparity FILE " << img_path << endl;
+        Mat disparity = imread( disparity_path , 0);
+        Mat img = imread( img_path_target);
+        cv::Mat reprojection(disparity.size(),CV_32FC3);
+        cv::reprojectImageTo3D(disparity, reprojection, Q);
+        Pose3 P = result.at(Symbol('x', i).key()).cast<Pose3>();
+        //cout << P << endl;
+        vector<vector<float>> points = get_points(considered_poses[i], disparity);
+        w_points_3d = extract_world_points(world_3d_objects);
+        cout << w_points_3d.size() << endl;
+        int not_matched = 0;
+        for (int ii=0; ii < points.size(); ii++) {
+            int x = int(points[ii][0]);
+            int y = int(points[ii][1]);
+            Vec3f p = reprojection.at<Vec3f>(y,x);
+            Point3 x3D; 
+            x3D(0) = p[0];
+            x3D(1) = p[1];
+            x3D(2) = p[2];     
+            if(p[2] < baseline*15) {
+                Point3 x3Dw = P.transform_from(x3D);
+                semantic_objects_3d tmp;
+                if(i == 0) {
+                    camPoint c;
+                    tmp.x3Dw = x3Dw;
+                    c.x3D = x3D;
+                    c.frame_id = i;
+                    tmp.cam_frame_3d_points.push_back(c);
+                    tmp.index = ii;
+                    world_3d_objects.insert(std::make_pair(ii, tmp));
+                    continue;
+                }
+                double d = 999;
+                int index_min = -1;
+                for(int j = 0; j < w_points_3d.size(); j++) {
+                    double dt = xydist(x3Dw, w_points_3d[j].x3Dw);
+                    // Prevent 2 points to be associated with the same 3D world point                    
+                    if(dt < d  && !w_points_3d[j].matched && dt <0.005) {
+                        d = dt;
+                        index_min = j;
+                    }
+                }
+                if(index_min != -1) {
+                    w_points_3d[index_min].matched = true;
+                    camPoint c;
+                    c.frame_id = i;
+                    c.x3D = x3D;
+                    world_3d_objects.at(index_min).cam_frame_3d_points.push_back(c);                    
+                }
+                else {
+                    not_matched++;
+                }
+
+                    
+            }
+        }
+        cout << "NOT MATCHED " << not_matched << endl;
+        plot_projected_matches(considered_poses, world_3d_objects, result, Kgt, i);
+       
+
+    }
+    /*for (int i = 0; i < world_3d_objects.size(); i++){
+        cout << world_3d_objects[i].cam_frame_3d_points.size() << endl;
+    }  
+    cout << world_3d_objects.size() << endl;
+    */
+}
+
+
+
+//cout << index_min << "  " << d << endl;
+//int kk = 0;
+//cout << ii << endl;
+/*const auto it = remove_if(w_points_3d.begin(), w_points_3d.end(), 
+        [&index_min, &kk](const worldpoint p)
+        {   
+            
+            //if (p.index == index_min) {
+            //    cout << kk << endl;
+            //    cout << p.index << " | " << index_min << endl;
+            // }
+            // kk++;
+            return p.index == index_min; 
+        }
+); */
+//cout << (*it).index << " | " << index_min <<  endl;
+//w_points_3d.erase (it, w_points_3d.end());
+
+// append index to world objects array
+
+
+
+void plot_projected_matches(vector<int> considered_poses, std::map<int, semantic_objects_3d> world_3d_objects,
+                            gtsam::Values result, Cal3_S2::shared_ptr Kgt, int frame_id)
+{
+    cv::Mat HM; 
+    Mat imLeft =  imread(image_folder + "/frame" + to_string(considered_poses[0]) + ".jpg");
+    Mat imRight =  imread(image_folder + "/frame" + to_string(considered_poses[frame_id]) + ".jpg");
+    cout << image_folder + "/frame" + to_string(considered_poses[0]) + ".jpg" << endl;
+    cout << image_folder + "/frame" + to_string(considered_poses[frame_id]) + ".jpg" << endl;
+    hconcat(imLeft,imRight,HM); 
+    map<int, semantic_objects_3d>::iterator it;
+    for ( it = world_3d_objects.begin(); it != world_3d_objects.end(); it++ )
+    {
+        Pose3 P0 = result.at(Symbol('x', 0).key()).cast<Pose3>();
+        //Pose3 Pn = result.at(Symbol('x', frame_id).key()).cast<Pose3>();
+        Pose3 Pn = Pose3();   
+        Point3 x3Dw = (it->second).x3Dw;
+        PinholeCamera<Cal3_S2> camera0(P0, *Kgt);
+        Point2 gt = camera0.project(x3Dw);
+        vector<camPoint> cam_frame_3d_points = (it->second).cam_frame_3d_points;
+        for (int ep= 0; ep < cam_frame_3d_points.size(); ep++) {
+            if(cam_frame_3d_points[ep].frame_id == frame_id) {
+                Point3 x3d_t = cam_frame_3d_points[ep].x3D;
+                PinholeCamera<Cal3_S2> camera_n(Pn, *Kgt);
+                Point2 target = camera_n.project(x3d_t);
+                int thickness = 1;
+                int lineType = cv::LINE_8;
+                cv::Point2f start;
+                cv::Point2f end;
+                start.x = gt(0);
+                start.y = gt(1);
+                end.x = target(0) + imLeft.size().width;
+                end.y = target(1);
+                line( HM,
+                    start,
+                    end,
+                    0xffff,
+                    thickness,
+                    lineType );
+            }
+        }
+    }
+        string p = "/home/remote_user2/olslam/pixel_matches/test_" + to_string(frame_id) +".jpg";
+        cout << p << endl;
+        cv::imwrite( p, HM);
+}

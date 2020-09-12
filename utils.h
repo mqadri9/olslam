@@ -77,10 +77,14 @@ static float baseline = 0.089;
 static float cx = 2120.291162136175*RESIZE_FACTOR;
 static float cxprime = 2120.291162136175*RESIZE_FACTOR;
 static float cy = 1401.17755609316*RESIZE_FACTOR;
-static string image_folder = "/home/remote_user2/test_icp_simple/clusters/clusters2/151_5_30/rect1";
-static string data_folder = "/home/remote_user2/test_icp_simple/clusters/clusters2/151_5_30/disparities" ;
-    
+static string image_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/rect1";
+static string data_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/disparities" ;
+#define PI   3.1415926535897932384626433832795
+
 // FUNCTION HEADERS
+
+
+
 
 vector<vector<float>> read_csv(std::string);
 void printKeypointMapper(map<int, map<int, Point2f>>);
@@ -88,6 +92,12 @@ void printKeypointIndexer(map<string, int>);
 string getKpKey(Point2f);
 PointMatcher<float>::DataPoints create_datapoints(Mat);
 void ShowBlackCircle( const cv::Mat&, cv::Point, int, Scalar);
+vector<vector<float>> get_points(int , Mat);
+vector<vector<float>> get_3d_bounds(int, Mat);
+bool is_in_ellipse(float, float, float , float, float, float, float);
+int NumDigits(int);
+bool check_bound(float, float, vector<vector<float>> );
+bool check_bound2(float, float, vector<vector<float>>);
 
 
 // TEMPLATED FUNCTIONS
