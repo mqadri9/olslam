@@ -2,6 +2,24 @@
 #include <math.h>
 #include<cmath>
 
+void result_to_vtk(gtsam::Values result, int num_sift_landmarks)
+{
+    vector<float> pointcloud;
+    for (int i=num_sift_landmarks; i< result.size(); i++) {
+        if(result.exists(Symbol('l', i).key())) {
+            Point3 x3D = result.at(Symbol('l', i).key()).cast<Point3>();
+            if(x3D(2) < baseline*15000) {
+                pointcloud.push_back(x3D(0));
+                pointcloud.push_back(x3D(1));
+                pointcloud.push_back(x3D(2));      
+            } 
+        }
+    }
+    Mat m = Mat(pointcloud.size()/3, 1, CV_32FC3);
+    memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
+    save_vtk<float>(m, "/home/remote_user2/olslam/vtk/fruitlets3D.vtk");
+
+}
 
 void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vector<int> considered_poses) 
 {

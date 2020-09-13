@@ -124,8 +124,10 @@ int main(int argc, char* argv[]) {
     // Test GTSAM output  
     //test_sfm(result, Kgt, considered_poses);
     reconstruct_pointcloud(result, Kgt, considered_poses);
-    Optimize_object_loc(ret_optimizer, considered_poses, Kgt);
-    
+    gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, Kgt);
+    int num_sift_landmarks = ret_optimizer.landmarks3d.size();
+    result_to_vtk(result_reoptimize, num_sift_landmarks);
+
     return 0;
 }
 
