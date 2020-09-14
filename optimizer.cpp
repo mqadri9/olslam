@@ -9,7 +9,9 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
                        vector<Pose3> poses) {
     // Define the camera observation noise model
     auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 2 pixel in u and v
-    
+    const Cal3_S2Stereo::shared_ptr Kstereo(
+      new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
+    const auto model = noiseModel::Isotropic::Sigma(3, 1);    
     // Create a Factor Graph and Values to hold the new data
     NonlinearFactorGraph graph;
     NonlinearFactorGraph graph_cp;
@@ -51,7 +53,19 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
             Point2f measurement_cv2 = itt->second;
             Point2 measurement;
             measurement(0) = measurement_cv2.x;
-            measurement(1) = measurement_cv2.y;            
+            measurement(1) = measurement_cv2.y;
+
+            string disparity_path = data_folder + "/frame"+  to_string(considered_poses[i]) + ".jpg";
+            //cout << disparity_path << endl;
+            Mat disparity = imread( disparity_path , 0);
+            double uL = measurement(0);
+            double v = measurement(1);
+            double d = disparity.at<uchar>(v, uL);
+            double uR = uL - d;
+            //cout << uL << " | " << uR << " | " << d << endl;
+            //graph.emplace_shared<GenericStereoFactor<Pose3, Point3>>(
+            //   StereoPoint2(uL, uR, v), model, Symbol('x', i), Symbol('l', j), Kstereo);
+
             graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(
               measurement, noise, Symbol('x', i), Symbol('l', j), Kgt);
             j++;
@@ -292,34 +306,41 @@ gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> consid
     cout << "Without fruitlet landmarks initial error = " << graph.error(initialEstimate) << endl;
     auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 5 pixel in u and v
     Pose3 Pn = Pose3();
-    
-    for(int frame_id=0; frame_id<considered_poses.size(); frame_id++) {
-        //if(frame_id>5) {
-        //    break;
-        //}
-        int skipped_points = 0;
-        map<int, semantic_objects_3d>::iterator it;
-        for ( it = world_3d_objects.begin(); it != world_3d_objects.end(); it++ )    
-        {
-            int id = it->first;
-            Point3 x3Dw = (it->second).x3Dw;
-            vector<camPoint> cam_frame_3d_points = (it->second).cam_frame_3d_points;
-            if (cam_frame_3d_points.size() <= 5) {
-                continue;
-            }       
-            for (int ep= 0; ep < cam_frame_3d_points.size(); ep++) {
-                if(cam_frame_3d_points[ep].frame_id == frame_id) {
-                    Point3 x3d_t = cam_frame_3d_points[ep].x3D;
-                    PinholeCamera<Cal3_S2> camera_n(Pn, *Kgt);
-                    Point2 target = camera_n.project(x3d_t);
-                    graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(
-                        target, noise, Symbol('x', frame_id), Symbol('l', l_id + id), Kgt);
-                }
-            }
-            if (frame_id==0) {
-                //cout << l_id + id << endl;
-                initialEstimate.insert<Point3>(Symbol('l', l_id + id), x3Dw);
-            }
+
+    const Cal3_S2Stereo::shared_ptr Kstereo(
+      new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
+
+    // world_3d_objects is a map where the key is the index 
+    // of a landmark (projected fruitlet pixel to 3D) and the value 
+    // is semantic_objects_3d struct
+    const auto model = noiseModel::Isotropic::Sigma(3, 5);
+    map<int, semantic_objects_3d>::iterator it;
+    for ( it = world_3d_objects.begin(); it != world_3d_objects.end(); it++ )
+    {
+        int id = it->first;
+        Point3 x3Dw = (it->second).x3Dw;
+        vector<camPoint> cam_frame_3d_points = (it->second).cam_frame_3d_points;
+        if (cam_frame_3d_points.size() < 3) {
+            continue;
+        }
+        initialEstimate.insert<Point3>(Symbol('l', l_id + id), x3Dw);
+        for (int ep= 0; ep < cam_frame_3d_points.size(); ep++) {
+            Point3 x3d_t = cam_frame_3d_points[ep].x3D;
+            int frame_id = cam_frame_3d_points[ep].frame_id;
+            string disparity_path = data_folder + "/frame"+  to_string(considered_poses[frame_id]) + ".jpg";
+            Mat disparity = imread( disparity_path , 0);
+            PinholeCamera<Cal3_S2> camera_n(Pn, *Kgt);
+            Point2 target = camera_n.project(x3d_t);
+            int uL = (int)target(0);
+            int v = (int)target(1);
+            int d = disparity.at<uchar>(v, uL);
+            int uR = uL - d;
+            
+            graph.emplace_shared<GenericStereoFactor<Pose3, Point3>>(
+               StereoPoint2(uL, uR, v), model, Symbol('x', frame_id), Symbol('l', l_id + id), Kstereo);
+
+            //graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(
+            //    target, noise, Symbol('x', frame_id), Symbol('l', l_id + id), Kgt);
         }
     }
     gtsam::Values result_reoptimize;

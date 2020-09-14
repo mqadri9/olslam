@@ -73,6 +73,8 @@ using namespace cv::xfeatures2d;
 static int THRESHOLD_NUMBER_MATCHES = 100;
 static float RESIZE_FACTOR = 0.2;
 static float focal_length = 2869.381763767118*RESIZE_FACTOR;
+static float fy = 2868.360919010879*RESIZE_FACTOR;
+
 static float baseline = 0.089;
 static float cx = 2120.291162136175*RESIZE_FACTOR;
 static float cxprime = 2120.291162136175*RESIZE_FACTOR;
