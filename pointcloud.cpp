@@ -165,7 +165,7 @@ retPointcloud createPointClouds(Mat disparity1, Mat disparity2, std::vector<KeyP
     int j = 0;      
     for(size_t l=0; l < errors.size(); l++) {
         // Only select points that have depth error less than 1cm
-        if (errors[l] < mean/100 ) {
+        if (errors[l] < mean/10 ) {
             pointcloud1.push_back(rawcloud1[j]);
             pointcloud1.push_back(rawcloud1[j+1]);
             pointcloud1.push_back(rawcloud1[j+2]);

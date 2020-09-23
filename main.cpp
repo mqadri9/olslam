@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
     int count = std::distance(boost::make_filter_iterator(pred, dir_first, dir_last),
                       boost::make_filter_iterator(pred, dir_last, dir_last));
 
-    for(int k=0; k <count; k++) {
+    for(int k=0; k <6; k++) {
         frames.push_back(to_string(k));
     }
     cout << frames.size() << endl;
@@ -50,24 +50,22 @@ int main(int argc, char* argv[]) {
     //cout << "considered_poses " << considered_poses.size() << endl;
     for(int i=0; i< considered_poses.size(); ++i)
         cout << considered_poses[i] << endl;;
-        
+    int pose_id = 1;
+
+    std::cout << "length of considered poses " << considered_poses.size() << std::endl;
+    std::cout << "length of filetereoutout " << filteredOutput.size() << std::endl;
+    Rot3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    Point3 t;
+    t(0) = 0;
+    t(1) = 0;
+    t(2) = 0;
+    Pose3 pose(R, t);
+    poses.push_back(pose);
     for(size_t i=0; i<considered_poses.size(); ++i) {
-        
-        if(i == 0) {
-            Rot3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
-            Point3 t;
-            t(0) = 0;
-            t(1) = 0;
-            t(2) = 0;
-            Pose3 pose(R, t);
-            poses.push_back(pose);
-            continue;   
-        }
         Mat m1 = filteredOutput[i].ret[0];
         Mat m2 = filteredOutput[i].ret[1];
         vector<Point2f> src = filteredOutput[i].src;
         vector<Point2f> dst = filteredOutput[i].dst;
-        
         cout << m1.size() << endl;
         cout << m2.size() << endl;
         retPose p = getPose(m1, m2, "icp");        
@@ -82,10 +80,12 @@ int main(int argc, char* argv[]) {
             //cout << "Initializing prevKeypointIndexer" << endl;
             for(int l =0; l < dst.size(); l++) {
                 // assign incremental landmark IDs for the first two images
-                KeypointMapper[l].insert(make_pair(i-1, src[l]));
-                KeypointMapper[l].insert(make_pair(i, dst[l]));
+                KeypointMapper[l].insert(make_pair(pose_id-1, src[l]));
+                KeypointMapper[l].insert(make_pair(pose_id, dst[l]));
                 prevKeypointIndexer[getKpKey(dst[l])] = l;
+               
             }
+            pose_id++;
             continue;
         }
         /* For each keypoint in the new image
@@ -104,13 +104,15 @@ int main(int argc, char* argv[]) {
                     int largest_landmark_id = KeypointMapper.rbegin()->first;
                     landmark_id = largest_landmark_id + 1;
                 }
-                KeypointMapper[landmark_id].insert(make_pair(i, dst[l]));
+                KeypointMapper[landmark_id].insert(make_pair(pose_id, dst[l]));
                 currKeypointIndexer[getKpKey(dst[l])] = landmark_id;
             }
                     
             prevKeypointIndexer.clear();
             prevKeypointIndexer = currKeypointIndexer;
         }
+        pose_id++;
+        cout << pose_id << endl;
     }
 
     cout << "Populated maps" << endl;
@@ -123,10 +125,10 @@ int main(int argc, char* argv[]) {
 
     // Test GTSAM output  
     //test_sfm(result, Kgt, considered_poses);
-    reconstruct_pointcloud(result, Kgt, considered_poses);
-    gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, Kgt);
-    int num_sift_landmarks = ret_optimizer.landmarks3d.size();
-    result_to_vtk(result_reoptimize, num_sift_landmarks);
+    //reconstruct_pointcloud(result, Kgt, considered_poses);
+    //gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, Kgt);
+    //int num_sift_landmarks = ret_optimizer.landmarks3d.size();
+    //result_to_vtk(result_reoptimize, num_sift_landmarks);
 
     return 0;
 }
