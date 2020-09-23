@@ -43,10 +43,9 @@ int main(int argc, char* argv[]) {
 
     all_frames = find_images(data_folder);
     
-    for(int k=0; k <2; k++) {
+    for(int k=0; k <all_frames.size(); k++) {
         frames.push_back(all_frames[k]);
     }
-    
     //for(int i=0; i< all_images.size(); ++i)
     //    cout << "all_images " << all_images[i] << endl;;   
     cout << "number of frames is: " << frames.size() << endl;

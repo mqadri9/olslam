@@ -41,8 +41,8 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
         map<int, Point2f>::iterator itr;
         int landmark_id = it->first;
         map<int, Point2f> landmark_to_poses = it->second;
-        cout << "landmark_to_poses.size() " << landmark_to_poses.size() << endl;
-        cout << "N " << N << endl;
+        //cout << "landmark_to_poses.size() " << landmark_to_poses.size() << endl;
+        //cout << "N " << N << endl;
         if(landmark_to_poses.size() < N) {
             continue;
         }
@@ -58,7 +58,8 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
             Point2 measurement;
             measurement(0) = measurement_cv2.x;
             measurement(1) = measurement_cv2.y;
-            string disparity_path = data_folder + "/frame"+  to_string(considered_poses[pose_id]) + ".jpg";
+            string disparity_path = data_folder + "/" + frames[considered_poses[pose_id]];
+            cout << disparity_path << endl;
             Mat disparity = imread( disparity_path , 0);
             double x = measurement(0);
             double y = measurement(1);
@@ -110,9 +111,9 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
         }
 
         // TESTING CONDITION NEEDS TO BE REMOVED
-        if(landmark_id_in_graph > 2 ) {
-            break;
-        }
+        //if(landmark_id_in_graph > 2 ) {
+        //   break;
+       // }
         landmark_id_in_graph++;
 
     }

@@ -164,8 +164,8 @@ retFiltering filterImagesByMatching(vector<string> frames)
     // Create SIFT detector and define parameters
     std::vector<KeyPoint> keypointsCurrLeft, keypointsCurrRight, keypointsPrevLeft, keypointsPrevRight;
     int minHessian = 400;
-    //Ptr<SURF> detector = SURF::create( minHessian );
-    cv::Ptr<Feature2D> detector = xfeatures2d::SIFT::create();
+    Ptr<SURF> detector = SURF::create( minHessian );
+    //cv::Ptr<Feature2D> detector = xfeatures2d::SIFT::create();
     Mat descriptorsCurrLeft, descriptorsCurrRight, descriptorsPrevLeft, descriptorsPrevRight; 
     Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE);
     std::vector< std::vector<DMatch> > knn_matches_stereo_prev;

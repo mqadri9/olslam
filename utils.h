@@ -82,9 +82,9 @@ static float baseline = 0.089;
 static float cx = 2120.291162136175*RESIZE_FACTOR;
 static float cxprime = 2120.291162136175*RESIZE_FACTOR;
 static float cy = 1401.17755609316*RESIZE_FACTOR;
-static string image_folder = "/home/remote_user2/olslam/clusters/151_5_30/rect1";
-static string image_folder_right = "/home/remote_user2/olslam/clusters/151_5_30/rect0";
-static string data_folder = "/home/remote_user2/olslam/clusters/151_5_30/disparities" ;
+static string image_folder_right = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/rect0";
+static string image_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/rect1";
+static string data_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/disparities" ;
 
 /*
 static int THRESHOLD_NUMBER_MATCHES = 100;
