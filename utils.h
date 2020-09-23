@@ -43,7 +43,8 @@
 #include <utility> 
 #include <stdexcept> 
 #include <sstream> 
-
+#include <algorithm>
+#include <dirent.h>
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
@@ -70,6 +71,8 @@ using namespace cv::xfeatures2d;
 
 //  DEFINE GLOBAL VARIABLES
 
+// APPLE FRUITLET 2019 PARAMS
+
 static int THRESHOLD_NUMBER_MATCHES = 100;
 static float RESIZE_FACTOR = 0.2;
 static float focal_length = 2869.381763767118*RESIZE_FACTOR;
@@ -79,14 +82,29 @@ static float baseline = 0.089;
 static float cx = 2120.291162136175*RESIZE_FACTOR;
 static float cxprime = 2120.291162136175*RESIZE_FACTOR;
 static float cy = 1401.17755609316*RESIZE_FACTOR;
-static string image_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/rect1";
-static string data_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/disparities" ;
+static string image_folder = "/home/remote_user2/olslam/clusters/151_5_30/rect1";
+static string image_folder_right = "/home/remote_user2/olslam/clusters/151_5_30/rect0";
+static string data_folder = "/home/remote_user2/olslam/clusters/151_5_30/disparities" ;
+
+/*
+static int THRESHOLD_NUMBER_MATCHES = 100;
+static float RESIZE_FACTOR = 0.2;
+static float focal_length = 2583.002890739886*RESIZE_FACTOR;
+static float fy = 2577.953120526253*RESIZE_FACTOR;
+
+static float baseline = 0.11;
+static float cx = 2012.978267793323*RESIZE_FACTOR;
+static float cxprime = 2012.978267793323*RESIZE_FACTOR;
+static float cy = 1525.658605179268*RESIZE_FACTOR;
+static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/rect1";
+static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/rect0";
+static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/disparities" ;
+*/
 #define PI   3.1415926535897932384626433832795
 
+
+
 // FUNCTION HEADERS
-
-
-
 
 vector<vector<float>> read_csv(std::string);
 void printKeypointMapper(map<int, map<int, Point2f>>);
@@ -100,7 +118,15 @@ bool is_in_ellipse(float, float, float , float, float, float, float);
 int NumDigits(int);
 bool check_bound(float, float, vector<vector<float>> );
 bool check_bound2(float, float, vector<vector<float>>);
+void tokenize(std::string const &, const char, std::vector<std::string> &);
+std::vector < std::string > find_images(std::string path);
 
+void drawMatchesSift(std::vector< std::vector<DMatch> >, 
+                    std::vector<KeyPoint> , 
+                    std::vector<KeyPoint> ,
+                    string,
+                    string,
+                    string);
 
 // TEMPLATED FUNCTIONS
 template <typename T>

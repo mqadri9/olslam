@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
     std::map<string,int>::iterator itr;
                
     vector<string> frames;
-    vector<string> frames1;
+    vector<string> all_frames;
     vector<Pose3> poses;
     vector<Mat> disparities;
     retPointcloud s;
@@ -36,33 +36,40 @@ int main(int argc, char* argv[]) {
     int count = std::distance(boost::make_filter_iterator(pred, dir_first, dir_last),
                       boost::make_filter_iterator(pred, dir_last, dir_last));
 
-    for(int k=0; k <count; k++) {
-        frames.push_back(to_string(k));
-    }
-    cout << frames.size() << endl;
+    //for(int k=0; k <3; k++) {
+    //    frames.push_back(to_string(k));
+    //}
+    //
+
+    all_frames = find_images(data_folder);
     
+    for(int k=0; k <2; k++) {
+        frames.push_back(all_frames[k]);
+    }
+    
+    //for(int i=0; i< all_images.size(); ++i)
+    //    cout << "all_images " << all_images[i] << endl;;   
+    cout << "number of frames is: " << frames.size() << endl;
     retFiltering filtered;
     filtered = filterImages(frames);
-    
+
     vector<int> considered_poses = filtered.considered_poses;
     vector<retPointcloud> filteredOutput = filtered.filteredOutput;
     
     //cout << "considered_poses " << considered_poses.size() << endl;
     for(int i=0; i< considered_poses.size(); ++i)
-        cout << considered_poses[i] << endl;;
-        
-    for(size_t i=0; i<considered_poses.size(); ++i) {
-        
-        if(i == 0) {
-            Rot3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
-            Point3 t;
-            t(0) = 0;
-            t(1) = 0;
-            t(2) = 0;
-            Pose3 pose(R, t);
-            poses.push_back(pose);
-            continue;   
-        }
+        cout << "considered pose " << considered_poses[i] << endl;;
+    Rot3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    Point3 t;
+    t(0) = 0;
+    t(1) = 0;
+    t(2) = 0;
+    Pose3 I(R, t);
+    poses.push_back(I);
+    int pose_id = 1;
+
+    for(size_t i=0; i<filteredOutput.size(); ++i) {
+    
         Mat m1 = filteredOutput[i].ret[0];
         Mat m2 = filteredOutput[i].ret[1];
         vector<Point2f> src = filteredOutput[i].src;
@@ -73,19 +80,19 @@ int main(int argc, char* argv[]) {
         retPose p = getPose(m1, m2, "icp");        
         Pose3 pose(p.R, p.t);
         cout << pose << endl;
+        //pose = I;
         poses.push_back(poses.back()*pose);        
 
         // Need to construct the landmarks array
-        // Initialize and create gtsam graph here
-        // i is the image index
         if(poses.size() == 2) {
             //cout << "Initializing prevKeypointIndexer" << endl;
             for(int l =0; l < dst.size(); l++) {
                 // assign incremental landmark IDs for the first two images
-                KeypointMapper[l].insert(make_pair(i-1, src[l]));
-                KeypointMapper[l].insert(make_pair(i, dst[l]));
+                KeypointMapper[l].insert(make_pair(pose_id-1, src[l]));
+                KeypointMapper[l].insert(make_pair(pose_id, dst[l]));
                 prevKeypointIndexer[getKpKey(dst[l])] = l;
             }
+            pose_id++;
             continue;
         }
         /* For each keypoint in the new image
@@ -104,13 +111,14 @@ int main(int argc, char* argv[]) {
                     int largest_landmark_id = KeypointMapper.rbegin()->first;
                     landmark_id = largest_landmark_id + 1;
                 }
-                KeypointMapper[landmark_id].insert(make_pair(i, dst[l]));
+                KeypointMapper[landmark_id].insert(make_pair(pose_id, dst[l]));
                 currKeypointIndexer[getKpKey(dst[l])] = landmark_id;
             }
                     
             prevKeypointIndexer.clear();
             prevKeypointIndexer = currKeypointIndexer;
         }
+        pose_id++;
     }
 
     cout << "Populated maps" << endl;
@@ -123,11 +131,10 @@ int main(int argc, char* argv[]) {
 
     // Test GTSAM output  
     //test_sfm(result, Kgt, considered_poses);
-    reconstruct_pointcloud(result, Kgt, considered_poses);
-    gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, Kgt);
-    int num_sift_landmarks = ret_optimizer.landmarks3d.size();
-    result_to_vtk(result_reoptimize, num_sift_landmarks);
+    //reconstruct_pointcloud(result, Kgt, considered_poses);
+    //gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, Kgt);
+    //int num_sift_landmarks = ret_optimizer.landmarks3d.size();
+    //result_to_vtk(result_reoptimize, num_sift_landmarks);
 
     return 0;
 }
-

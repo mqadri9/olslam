@@ -54,6 +54,7 @@ string getKpKey(Point2f m){
 PointMatcher<float>::DataPoints create_datapoints(Mat pointcloud) {
     ostringstream os; 
     os << "x,y,z\n";
+    std::cout << "pointcloud.rows: " << pointcloud.rows << std::endl;
     for(int i = 0; i < pointcloud.rows; i++)
     {
        os << pointcloud.at<float>(i, 0) << "," << pointcloud.at<float>(i, 1) << "," << pointcloud.at<float>(i, 2) << "\n";
@@ -177,6 +178,20 @@ int NumDigits(int x)
 }  
 
 
+void tokenize(std::string const &str, const char delim,
+			std::vector<std::string> &out)
+{
+	size_t start;
+	size_t end = 0;
+
+	while ((start = str.find_first_not_of(delim, end)) != std::string::npos)
+	{
+		end = str.find(delim, start);
+		out.push_back(str.substr(start, end - start));
+	}
+}
+
+
 bool check_bound(float x, float y, vector<vector<float>>  bounds3d) {
     for (int i=0; i < bounds3d.size(); i++) {
         float x1 = bounds3d[i][0];
@@ -200,3 +215,93 @@ bool check_bound2(float x, float y, vector<vector<float>>  points) {
     }
     return false;
 }
+
+void drawMatchesSift(std::vector< std::vector<DMatch> > knn_matches, 
+                 std::vector<KeyPoint> keypoints1, 
+                 std::vector<KeyPoint> keypoints2,
+                 string img_path1,
+                 string img_path2,
+                 string output)
+{
+    std::cout << img_path1 << std::endl;
+    std::cout << img_path2 << std::endl;
+    cout << output << endl;
+    Mat imLeft =  imread(img_path1);
+    Mat imRight =  imread(img_path2);
+    const float ratio_thresh = 0.7f;
+    std::vector<DMatch> good_matches;
+    for (size_t i = 0; i < knn_matches.size(); i++)
+    {
+        if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance)
+        {
+           good_matches.push_back(knn_matches[i][0]);
+        }
+    }
+    //-- Draw matches
+    Mat img_matches;
+    //Mat img = imread( samples::findFile( img_path ), IMREAD_GRAYSCALE );
+    drawMatches( imLeft, keypoints1, imRight, keypoints2, good_matches, img_matches, Scalar::all(-1),
+                Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+
+    imwrite(output,img_matches); 
+}
+
+int strcmp_natural(const char *a, const char *b)
+{
+    if (!a || !b)   // if one doesn't exist, it comes first
+        return a ? 1 : b ? -1 : 0;
+
+    if (isdigit(*a) && isdigit(*b))     // both start with numbers
+    {
+        char *remainderA;
+        char *remainderB;
+        long valA = strtol(a, &remainderA, 10);
+        long valB = strtol(b, &remainderB, 10);
+        if (valA != valB)
+        {
+            return valA - valB;         // smaller comes first
+        }
+        else
+        {
+            std::ptrdiff_t lengthA = remainderA - a;
+            std::ptrdiff_t lengthB = remainderB - b;
+            if (lengthA != lengthB)
+                return lengthA - lengthB;   // shorter comes first
+            else                            // all being equal, recurse
+                return strcmp_natural(remainderA, remainderB);
+        }
+    }
+
+    if (isdigit(*a) || isdigit(*b))     // if just one is a number
+        return isdigit(*a) ? -1 : 1;    // numbers always come first
+
+    while (*a && *b)    // non-numeric characters
+    {
+        if (isdigit(*a) || isdigit(*b))
+            return strcmp_natural(a, b);    // recurse
+        if (*a != *b)
+            return *a - *b;
+        a++;
+        b++;
+    }
+    return *a ? 1 : *b ? -1 : 0;
+}
+
+bool natural_less(const std::string& lhs, const std::string& rhs)
+{
+    return strcmp_natural(lhs.c_str(), rhs.c_str()) < 0;
+}
+
+std::vector < std::string > find_images(std::string path) {
+   DIR * dir;   dirent * pdir;
+   std::vector < std::string > files;
+   
+    dir = opendir(path.c_str());
+    while ((pdir = readdir(dir))) {
+       if( strcmp(pdir -> d_name, ".")!=0 & strcmp(pdir -> d_name, "..")!=0) {
+           files.push_back(pdir -> d_name); 
+       }
+    }
+    std::sort(files.begin(), files.end(), natural_less);
+    return files;
+} 
