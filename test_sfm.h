@@ -4,7 +4,7 @@
 #include "utils.h"
 
 void test_sfm(gtsam::Values, Cal3_S2::shared_ptr, vector<int>);
-void reconstruct_pointcloud(gtsam::Values, Cal3_S2::shared_ptr, vector<int>);
+void reconstruct_pointcloud(gtsam::Values, Cal3_S2::shared_ptr, vector<int>, vector<string> frames);
 bool check_bound(float, float, vector<vector<float>> );
 vector<vector<float>> get_3d_bounds(int, Mat);
 int NumDigits(int);  

@@ -9,6 +9,7 @@ retFiltering filterImages(vector<string> frames)
     std::vector<KeyPoint> keypoints1, keypoints2;
     int minHessian = 400;
     Ptr<SURF> detector = SURF::create( minHessian );
+    //cv::Ptr<cv::xfeatures2d::SIFT> detector = cv::xfeatures2d::SIFT::create();
     Mat descriptors1, descriptors2; 
     Mat d1, d2;
     Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::BRUTEFORCE);
@@ -125,10 +126,13 @@ retPointcloud createPointClouds(Mat disparity1, Mat disparity2, std::vector<KeyP
         if(m[0].distance < 0.7*m[1].distance) {
             float x1 = keypoints1[m[0].queryIdx].pt.x;
             float y1 = keypoints1[m[0].queryIdx].pt.y;
-            float d1 = disparity1.at<uchar>((int)y1,(int)x1);
+            //x1 = x1*RESIZE_FACTOR;
+            //y1 = y1*RESIZE_FACTOR;
+            float d1 = disparity1.at<uchar>((int)(y1*RESIZE_FACTOR),(int)(x1*RESIZE_FACTOR));
             if(d1 == 0) {
                 continue;
             }
+            d1 = d1/RESIZE_FACTOR;
             float z1 = baseline*focal_length/d1; 
             x1 = (x1-cx)*z1/focal_length;
             y1 = (y1-cy)*z1/focal_length;
@@ -136,10 +140,13 @@ retPointcloud createPointClouds(Mat disparity1, Mat disparity2, std::vector<KeyP
             
             float x2 = keypoints2[m[0].trainIdx].pt.x;
             float y2 = keypoints2[m[0].trainIdx].pt.y;
-            float d2 = disparity2.at<uchar>((int)y2,(int)x2);
+            //x2 = x2*RESIZE_FACTOR;
+            //y2 = y2*RESIZE_FACTOR;
+            float d2 = disparity2.at<uchar>((int)(y2*RESIZE_FACTOR),(int)(x2*RESIZE_FACTOR));
             if(d2 == 0) {
                 continue;
             }
+            d2 = d2/RESIZE_FACTOR;
             float z2 = baseline*focal_length/d2; 
             x2 = (x2-cx)*z2/focal_length;
             y2 = (y2-cy)*z2/focal_length;

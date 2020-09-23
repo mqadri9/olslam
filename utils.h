@@ -68,6 +68,7 @@ using namespace gtsam;
 using namespace cv;
 using namespace cv::xfeatures2d;
 
+/*
 //  DEFINE GLOBAL VARIABLES
 static int THRESHOLD_NUMBER_MATCHES = 100;
 static float RESIZE_FACTOR = 0.2;
@@ -80,21 +81,23 @@ static float cxprime = 2120.291162136175*RESIZE_FACTOR;
 static float cy = 1401.17755609316*RESIZE_FACTOR;
 static string image_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/rect1";
 static string data_folder = "/home/remote_user2/olslam/clusters/clusters2/151_5_30/disparities" ;
+static float ellipse_resize_factor = 1;
+*/
 
-/*
 static int THRESHOLD_NUMBER_MATCHES = 100;
 static float RESIZE_FACTOR = 0.2;
-static float focal_length = 2583.002890739886*RESIZE_FACTOR;
-static float fy = 2577.953120526253*RESIZE_FACTOR;
+static float focal_length = 2583.002890739886;
+static float fy = 2577.953120526253;
 
 static float baseline = 0.11;
-static float cx = 2012.978267793323*RESIZE_FACTOR;
-static float cxprime = 2012.978267793323*RESIZE_FACTOR;
-static float cy = 1525.658605179268*RESIZE_FACTOR;
-static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/rect1";
-static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/rect0";
+static float cx = 2012.978267793323;
+static float cxprime = 2012.978267793323;
+static float cy = 1525.658605179268;
+static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/rect1_fullres";
+static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/rect0_fullres";
 static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/disparities" ;
-*/
+static float ellipse_resize_factor = 0.2;
+
 #define PI   3.1415926535897932384626433832795
 
 // FUNCTION HEADERS

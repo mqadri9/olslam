@@ -36,6 +36,13 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
     }
     vector<Point3> landmarks3d;
     int landmark_id_in_graph = 0;
+    bool seen_first = false;
+    bool seen_first_42 = false;
+    bool seen_first_48 = false;
+    bool seen_first_64 = false;
+    bool seen_first_66 = false;
+    bool seen_twice_66 = false;
+    bool seen_first_21 = false;
     for ( it=KeypointMapper.begin() ; it != KeypointMapper.end(); it++ ) {
         //int frame_id = considered_poses[i];
         map<int, Point2f>::iterator itr;
@@ -58,15 +65,16 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
             Point2 measurement;
             measurement(0) = measurement_cv2.x;
             measurement(1) = measurement_cv2.y;
-            string disparity_path = data_folder + "/frame" +  to_string(pose_id) + ".jpg";;
-            cout << disparity_path << endl;
+            string disparity_path = data_folder + "/frame" +  frames[pose_id] + ".jpg";;
+            //cout << disparity_path << endl;
             Mat disparity = imread( disparity_path , 0);
             double x = measurement(0);
             double y = measurement(1);
-            double d = disparity.at<uchar>((int)y, (int)x);
+            double d = disparity.at<uchar>((int)(y*RESIZE_FACTOR), (int)(x*RESIZE_FACTOR));
+            d = d/RESIZE_FACTOR;
             double uR = x - d;
             if (d < 20 || uR < 0) {
-                cout << "Skipping this iteration d=" << d << "uR= " << uR <<  " x=" << x << " frame " << to_string(pose_id) + ".jpg" << std::endl;
+                cout << "Skipping this iteration d=" << d << "uR= " << uR <<  " x=" << x << " frame " << frames[pose_id] + ".jpg" << std::endl;
                 skipped_landmark_at_pose = true;
                 break;
             }
@@ -88,9 +96,45 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
         if(skipped_landmark_at_pose) {
             continue;
         }
+        if(landmark_id_in_graph==21 & !seen_first_21) {
+            cout << "seen" << endl;
+            seen_first_21 = true;
+            continue;
+        }
+        if(landmark_id_in_graph==32 & !seen_first) {
+            cout << "seen" << endl;
+            seen_first = true;
+            continue;
+        }
+        if(landmark_id_in_graph==42 & !seen_first_42) {
+            cout << "seen" << endl;
+            seen_first_42 = true;
+            continue;
+        }
+        if(landmark_id_in_graph==48 & !seen_first_48) {
+            cout << "seen" << endl;
+            seen_first_48 = true;
+            continue;
+        }
+        if(landmark_id_in_graph==64 & !seen_first_64) {
+            cout << "seen" << endl;
+            seen_first_64 = true;
+            continue;
+        }
+        if(landmark_id_in_graph==66 & !seen_first_66) {
+            cout << "seen" << endl;
+            seen_first_66 = true;
+            continue;
+        }
+        if(landmark_id_in_graph==66 & !seen_twice_66) {
+            cout << "seen" << endl;
+            seen_twice_66 = true;
+            continue;
+        }
         for(int pr=0; pr < projectionFactors.size(); pr++) {
             graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(projectionFactors[pr]);            
         }
+        
         float Z = baseline*focal_length/d0;
         float X = (x0-cx)*Z/focal_length;
         float Y = (y0-cy)*Z/focal_length;
@@ -111,9 +155,9 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
         }
 
         // TESTING CONDITION NEEDS TO BE REMOVED
-        if(landmark_id_in_graph > 2 ) {
+        if(landmark_id_in_graph > 280 ) {
            break;
-       }
+        }
         landmark_id_in_graph++;
 
     }
@@ -165,24 +209,24 @@ double xydist(Point3 p1, Point3 p2) {
     return sqrt(pow(x1-x2, 2) + pow(y1-y2, 2));
 }
 
-gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> considered_poses, Cal3_S2::shared_ptr Kgt) {
+gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> considered_poses, vector<string> frames, Cal3_S2::shared_ptr Kgt) {
     NonlinearFactorGraph graph = ret_optimizer.graph;
     gtsam::Values result = ret_optimizer.result;
     vector<Point3> landmarks3d = ret_optimizer.landmarks3d;   
     cv::Mat Q;
-    float data[16] = {1.0, 0, 0, -cx, 0, 1, 0, -cy, 0, 0, 0, focal_length, 0, 0, 1.0/baseline, (cx-cxprime)/baseline};
+    float data[16] = {1.0, 0, 0, -cx*RESIZE_FACTOR, 0, 1, 0, -cy*RESIZE_FACTOR, 0, 0, 0, focal_length*RESIZE_FACTOR, 0, 0, 1.0/baseline, (cx*RESIZE_FACTOR-cxprime*RESIZE_FACTOR)/baseline};
     Q = Mat(4, 4, CV_32FC1, &data);
     // Each semantic_objects_3d element contains the 3D coordinates of one of the 3D projected pixels 
     // of the semantically segmented fruitlets. It also contains a list mapping each 3D world point to its 
     // corresponding point in each camera frame
     std::map<int, semantic_objects_3d> world_3d_objects;
-    for(int i=0; i<considered_poses.size(); i++) {
+    for(int i=0; i<frames.size(); i++) {
         //if(i>5) {
         //    break;
         //}
         vector<worldpoint> w_points_3d;
-        string disparity_path = data_folder + "/frame"+  to_string(considered_poses[i]) + ".jpg";
-        string img_path_target = image_folder + "/frame" + to_string(considered_poses[i]) + ".jpg";
+        string disparity_path = data_folder + "/frame"+  frames[i] + ".jpg";
+        string img_path_target = image_folder + "/frame" + frames[i] + ".jpg";
         //cout << "IMAGES FILE " << img_path_target << endl;
         //cout << "disparity FILE " << img_path << endl;
         Mat disparity = imread( disparity_path , 0);
@@ -191,13 +235,14 @@ gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> consid
         cv::reprojectImageTo3D(disparity, reprojection, Q);
         Pose3 P = result.at(Symbol('x', i).key()).cast<Pose3>();
         //cout << P << endl;
-        vector<vector<float>> points = get_points(considered_poses[i], disparity);
+        vector<vector<float>> points = get_points(stoi(frames[i]), disparity);
         w_points_3d = extract_world_points(world_3d_objects);
-        cout << w_points_3d.size() << endl;
+        cout << "w_points_3d " << w_points_3d.size() << endl;
         int not_matched = 0;
         for (int ii=0; ii < points.size(); ii++) {
             int x = int(points[ii][0]);
             int y = int(points[ii][1]);
+            //cout << " x " << x << " y " << y << " reprojection " << reprojection.size() << endl;
             Vec3f p = reprojection.at<Vec3f>(y,x);
             Point3 x3D; 
             x3D(0) = p[0];
@@ -227,37 +272,44 @@ gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> consid
                     }
                 }
                 if(index_min != -1) {
+                    //cout << " index_min " << index_min << " world3dobject " << world_3d_objects.size() << endl;
                     w_points_3d[index_min].matched = true;
                     camPoint c;
                     c.frame_id = i;
                     c.x3D = x3D;
-                    world_3d_objects.at(index_min).cam_frame_3d_points.push_back(c);                    
+                    if ( !(world_3d_objects.find(index_min) == world_3d_objects.end()) ) {
+                        world_3d_objects.at(index_min).cam_frame_3d_points.push_back(c);
+                    }
+                    else {
+                        cout << "Did not find key.." << endl;
+                    }
+                    //cout << "we are here" << endl;
                 }
                 else {
                     not_matched++;
                 }  
             }
         }
-        //plot_projected_matches(considered_poses, world_3d_objects, result, Kgt, i);
+        plot_projected_matches(considered_poses, frames, world_3d_objects, result, Kgt, i);
     }
 
     //update initial pose guess with the output of sift slam
 
     Values initialEstimate;
-    for (size_t i = 0; i < considered_poses.size(); ++i) {
+    for (size_t i = 0; i < frames.size(); ++i) {
         initialEstimate.insert(
             Symbol('x', i), result.at(Symbol('x', i).key()).cast<Pose3>());
     }
     int l_id = 0;
-    for (l_id; l_id < landmarks3d.size(); ++l_id) {
-        initialEstimate.insert<Point3>(Symbol('l', l_id), landmarks3d[l_id]);
-    }
+    //for (l_id; l_id < landmarks3d.size(); ++l_id) {
+    //    initialEstimate.insert<Point3>(Symbol('l', l_id), landmarks3d[l_id]);
+    //}
     cout << "Without fruitlet landmarks initial error = " << graph.error(initialEstimate) << endl;
     auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 5 pixel in u and v
     Pose3 Pn = Pose3();
 
     const Cal3_S2Stereo::shared_ptr Kstereo(
-      new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
+      new Cal3_S2Stereo(focal_length*RESIZE_FACTOR, fy*RESIZE_FACTOR, 0, cx*RESIZE_FACTOR, cy*RESIZE_FACTOR, baseline));
 
     // world_3d_objects is a map where the key is the index 
     // of a landmark (projected fruitlet pixel to 3D) and the value 
@@ -276,7 +328,7 @@ gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> consid
         for (int ep= 0; ep < cam_frame_3d_points.size(); ep++) {
             Point3 x3d_t = cam_frame_3d_points[ep].x3D;
             int frame_id = cam_frame_3d_points[ep].frame_id;
-            string disparity_path = data_folder + "/frame"+  to_string(considered_poses[frame_id]) + ".jpg";
+            string disparity_path = data_folder + "/frame"+  frames[frame_id] + ".jpg";
             Mat disparity = imread( disparity_path , 0);
             PinholeCamera<Cal3_S2> camera_n(Pn, *Kgt);
             Point2 target = camera_n.project(x3d_t);
@@ -303,14 +355,16 @@ gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> consid
     return result_reoptimize;
 }
 
-void plot_projected_matches(vector<int> considered_poses, std::map<int, semantic_objects_3d> world_3d_objects,
+void plot_projected_matches(vector<int> considered_poses, vector<string> frames, std::map<int, semantic_objects_3d> world_3d_objects,
                             gtsam::Values result, Cal3_S2::shared_ptr Kgt, int frame_id)
 {
     cv::Mat HM; 
-    Mat imLeft =  imread(image_folder + "/frame" + to_string(considered_poses[0]) + ".jpg");
-    Mat imRight =  imread(image_folder + "/frame" + to_string(considered_poses[frame_id]) + ".jpg");
-    cout << image_folder + "/frame" + to_string(considered_poses[0]) + ".jpg" << endl;
-    cout << image_folder + "/frame" + to_string(considered_poses[frame_id]) + ".jpg" << endl;
+    Mat imLeft =  imread(image_folder + "/frame" + frames[0] + ".jpg");
+    Mat imRight =  imread(image_folder + "/frame" + frames[frame_id] + ".jpg");
+    cv::resize(imLeft, imLeft, cv::Size(), RESIZE_FACTOR, RESIZE_FACTOR);
+    cv::resize(imRight, imRight, cv::Size(), RESIZE_FACTOR, RESIZE_FACTOR);
+    cout << image_folder + "/frame" + frames[0] + ".jpg" << endl;
+    cout << image_folder + "/frame" + frames[frame_id] + ".jpg" << endl;
     hconcat(imLeft,imRight,HM); 
     map<int, semantic_objects_3d>::iterator it;
     for ( it = world_3d_objects.begin(); it != world_3d_objects.end(); it++ )

@@ -21,25 +21,26 @@ void result_to_vtk(gtsam::Values result, int num_sift_landmarks)
 
 }
 
-void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vector<int> considered_poses) 
+void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vector<int> considered_poses, vector<string> frames) 
 {
     cv::Mat Q;
-    float data[16] = {1.0, 0, 0, -cx, 0, 1, 0, -cy, 0, 0, 0, focal_length, 0, 0, 1.0/baseline, (cx-cxprime)/baseline};
+    float data[16] = {1.0, 0, 0, -cx*RESIZE_FACTOR, 0, 1, 0, -cy*RESIZE_FACTOR, 0, 0, 0, focal_length*RESIZE_FACTOR, 0, 0, 1.0/baseline, (RESIZE_FACTOR*cx-RESIZE_FACTOR*cxprime)/baseline};
     Q = Mat(4, 4, CV_32FC1, &data);
-    for(int i=0; i<considered_poses.size(); i++) {
+    for(int i=0; i<frames.size(); i++) {
         vector<float> pointcloud;
-        string img_path = data_folder + "/frame"+  to_string(considered_poses[i]) + ".jpg";
-        string img_path_target = image_folder + "/frame" + to_string(considered_poses[i]) + ".jpg";
+        string img_path = data_folder + "/frame"+  frames[i] + ".jpg";
+        string img_path_target = image_folder + "/frame" + frames[i] + ".jpg";
         cout << "IMAGES FILE " << img_path_target << endl;
         cout << "disparity FILE " << img_path << endl;
         Mat disparity = imread( img_path , 0);
         Mat img = imread( img_path_target);
+        cv::resize(img, img, cv::Size(), RESIZE_FACTOR, RESIZE_FACTOR);
         cv::Mat reprojection(disparity.size(),CV_32FC3);
         cv::reprojectImageTo3D(disparity, reprojection, Q);
         Pose3 P = result.at(Symbol('x', i).key()).cast<Pose3>();
         cout << P << endl;
         //vector<vector<float>> bounds3d = get_3d_bounds(considered_poses[i], disparity);
-        vector<vector<float>> points = get_points(considered_poses[i], disparity);
+        vector<vector<float>> points = get_points(stoi(frames[i]), disparity);
         Vec3b color;
         color[0] = 255;
         color[1] = 255;
@@ -63,7 +64,7 @@ void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vecto
             }        
             
         }
-        imwrite("/home/remote_user2/olslam/results/frame"+to_string(considered_poses[i])+".jpg",img); 
+        imwrite("/home/remote_user2/olslam/results/"+frames[i]+".jpg",img); 
         
         /*
         for(int r = 0; r < reprojection.rows; r++) {
@@ -88,7 +89,7 @@ void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vecto
         Mat m = Mat(pointcloud.size()/3, 1, CV_32FC3);
         cout << m.size() << endl;
         memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
-        save_vtk<float>(m, "/home/remote_user2/olslam/vtk/frame" + to_string(considered_poses[i]) + ".vtk");
+        save_vtk<float>(m, "/home/remote_user2/olslam/vtk_optimized/frame" + frames[i] + ".vtk");
     }
 
 

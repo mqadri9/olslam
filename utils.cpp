@@ -84,7 +84,7 @@ bool is_in_ellipse(float xp, float yp,  float x, float y, float a, float b, floa
 vector<vector<float>> get_points(int pose_id, Mat disparity) {
     string idx; 
     idx = to_string(pose_id);
-    string filename =  "/home/remote_user2/olslam/clusters/clusters2/151_5_30/final_op_151_5.30.19_umass/res_" + idx + ".csv";
+    string filename =  "/home/remote_user2/olslam/sorghum_dataset/final_op_row2/res_" + idx + ".csv";
     cout << "CSV FILE " << filename << endl;
     vector<vector<float>> csv = read_csv(filename);
     vector<vector<float>> points;
@@ -93,17 +93,18 @@ vector<vector<float>> get_points(int pose_id, Mat disparity) {
         float y1 = csv[j][9];
         float x2 = csv[j][10];
         float y2 = csv[j][11];
-       
-        float d1 = disparity.at<uchar>((int)y1,(int)x1);
+        float x_center = (x1 + x2)/2;
+        float y_center = (y1+y2) /2;
+        float d1 = disparity.at<uchar>((int)y_center,(int)x_center);
         if(d1 == 0) {
             continue;
         }
         int w = int(x2) - int(x1);
         int h = int(y2) - int(y1);
-        float x = csv[j][3];
-        float y = csv[j][4];
-        float a = csv[j][5]/2;
-        float b = csv[j][6]/2;
+        float x = csv[j][3]*ellipse_resize_factor;
+        float y = csv[j][4]*ellipse_resize_factor;
+        float a = ellipse_resize_factor*csv[j][5]/2;
+        float b = ellipse_resize_factor*csv[j][6]/2;
         float alpha = csv[j][7]*PI/180;
         for(int ww=0; ww < w; ww++) {
             for (int hh=0; hh < h; hh++) {
@@ -127,7 +128,7 @@ vector<vector<float>> get_3d_bounds(int pose_id, Mat disparity){
     if (NumDigits(pose_id) == 2) idx = "0" + to_string(pose_id);
     if (NumDigits(pose_id) == 3) idx = to_string(pose_id);
     idx = to_string(pose_id);
-    string filename =  "/home/remote_user2/olslam/clusters/clusters2/151_5_30/final_op_151_5.30_umass/res_" + idx + ".csv";
+    string filename =  "/home/remote_user2/olslam/sorghum_dataset/final_op_row2/res_" + idx + ".csv";
     cout << "CSV FILE " << filename << endl;
     vector<vector<float>> csv = read_csv(filename);
     vector<vector<float>> bounds3d;
