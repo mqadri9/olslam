@@ -51,6 +51,12 @@ string getKpKey(Point2f m){
     return key.str();
 }
 
+string getKpKey3(Point3f m){
+    ostringstream key ;
+    key << m.x << "," << m.y;
+    return key.str();
+}
+
 PointMatcher<float>::DataPoints create_datapoints(Mat pointcloud) {
     ostringstream os; 
     os << "x,y,z\n";
@@ -84,7 +90,7 @@ bool is_in_ellipse(float xp, float yp,  float x, float y, float a, float b, floa
 vector<vector<float>> get_points(int pose_id, Mat disparity) {
     string idx; 
     idx = to_string(pose_id);
-    string filename =  "/home/remote_user2/olslam/sorghum_dataset/final_op_row2/res_" + idx + ".csv";
+    string filename =  csv_folder + "/res_" + idx + ".csv";
     cout << "CSV FILE " << filename << endl;
     vector<vector<float>> csv = read_csv(filename);
     vector<vector<float>> points;

@@ -28,6 +28,7 @@ struct worldpoint {
 
 
 ret_optimize Optimize(map<int, map<int, Point2f>>, Cal3_S2::shared_ptr, vector<string>, vector<int>, vector<Pose3>);
+ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>>, Cal3_S2::shared_ptr, vector<string>, vector<int>, vector<Pose3>);
 vector<vector<float>> get_points(int, Mat);
 gtsam::Values Optimize_object_loc(ret_optimize, vector<int>, vector<string> frames, Cal3_S2::shared_ptr);
 void plot_projected_matches(vector<int>, vector<string>, std::map<int, semantic_objects_3d>, gtsam::Values, Cal3_S2::shared_ptr, int frame_id);

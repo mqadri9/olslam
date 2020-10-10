@@ -85,18 +85,19 @@ static float ellipse_resize_factor = 1;
 */
 
 static int THRESHOLD_NUMBER_MATCHES = 100;
-static float RESIZE_FACTOR = 0.2;
+static float RESIZE_FACTOR = 0.15;
 static float focal_length = 2583.002890739886;
 static float fy = 2577.953120526253;
-
+static float MIN_DISPARITY = 1;
 static float baseline = 0.11;
 static float cx = 2012.978267793323;
 static float cxprime = 2012.978267793323;
 static float cy = 1525.658605179268;
-static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/rect1_fullres";
-static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/rect0_fullres";
-static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/disparities" ;
-static float ellipse_resize_factor = 0.2;
+static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/rect1_fullres";
+static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/rect0_fullres";
+static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/disparities" ;
+static string csv_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/final_op_row4_left";
+static float ellipse_resize_factor = 0.15;
 
 #define PI   3.1415926535897932384626433832795
 
@@ -107,6 +108,7 @@ vector<vector<float>> read_csv(std::string);
 void printKeypointMapper(map<int, map<int, Point2f>>);
 void printKeypointIndexer(map<string, int>);
 string getKpKey(Point2f);
+string getKpKey3(Point3f);
 PointMatcher<float>::DataPoints create_datapoints(Mat);
 void ShowBlackCircle( const cv::Mat&, cv::Point, int, Scalar);
 vector<vector<float>> get_points(int , Mat);

@@ -42,9 +42,9 @@ void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vecto
         //vector<vector<float>> bounds3d = get_3d_bounds(considered_poses[i], disparity);
         vector<vector<float>> points = get_points(stoi(frames[i]), disparity);
         Vec3b color;
-        color[0] = 255;
-        color[1] = 255;
-        color[2] = 255;
+        color[0] = 0;
+        color[1] = 0;
+        color[2] = 170;
         cout << points.size() << endl;
         for (int ii=0; ii < points.size(); ii++) {
             int x = int(points[ii][0]);
@@ -64,7 +64,7 @@ void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vecto
             }        
             
         }
-        imwrite("/home/remote_user2/olslam/results/"+frames[i]+".jpg",img); 
+        imwrite("/home/remote_user2/olslam/results/"+frames[i]+"_r.jpg",img); 
         
         /*
         for(int r = 0; r < reprojection.rows; r++) {
@@ -89,7 +89,7 @@ void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vecto
         Mat m = Mat(pointcloud.size()/3, 1, CV_32FC3);
         cout << m.size() << endl;
         memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
-        save_vtk<float>(m, "/home/remote_user2/olslam/vtk_optimized/frame" + frames[i] + ".vtk");
+        save_vtk<float>(m, "/home/remote_user2/olslam/vtk_optimized/frame_w" + frames[i] + ".vtk");
     }
 
 

@@ -2,6 +2,177 @@
 
 #include "SFMdata.h"
 
+ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper, 
+                                  Cal3_S2::shared_ptr Kgt, 
+                                  vector<string> frames, 
+                                  vector<int> considered_poses, 
+                                  vector<Pose3> poses) {
+    // Define the camera observation noise model
+    auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 2 pixel in u and v
+    const Cal3_S2Stereo::shared_ptr Kstereo(
+      new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
+    const auto model = noiseModel::Isotropic::Sigma(3, 1);    
+    // Create a Factor Graph and Values to hold the new data
+    NonlinearFactorGraph graph;
+    NonlinearFactorGraph graph_cp;
+    auto poseNoise = noiseModel::Diagonal::Sigmas(
+        (Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.3))
+            .finished());  // 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
+    graph.addPrior(Symbol('x', 0), poses[0], poseNoise);  // add directly to graph
+    int N = 2; //poses.size();
+    map<int, map<int, Point3f> > landmarks;
+    map<int, map<int, Point3f> >::iterator it;
+
+    std::cout << "Filtering KeypointMapper to keep points that appear in N images" << std::endl;
+    //printKeypointMapper(KeypointMapper);
+    //cout << "Created FilteredKeypointMapper" << endl;
+    
+    // Create the data structure to hold the initial estimate to the solution
+    Values initialEstimate;
+    for (size_t i = 0; i < poses.size(); ++i) {
+        initialEstimate.insert(
+            Symbol('x', i), poses[i]);
+    }
+    vector<Point3> landmarks3d;
+    int landmark_id_in_graph = 0;
+    cout << "SIZE OF KEYPOINTMAPPER " << KeypointMapper.size() << endl;
+    for ( it=KeypointMapper.begin() ; it != KeypointMapper.end(); it++ ) {
+        // Loop over each keypoint
+        map<int, Point3f>::iterator itr;
+        int landmark_id = it->first;
+        map<int, Point3f> landmark_to_poses = it->second;
+
+        if(landmark_to_poses.size() < N) {
+            continue;
+        }
+        Point3 landmark3d;
+        double x0, y0, d0;
+        int processed_first_pose = false;
+        bool skipped_landmark_at_pose = false;
+        //vector<GenericProjectionFactor<Pose3, Point3, Cal3_S2>> projectionFactors;
+        vector<GenericStereoFactor<Pose3, Point3>> projectionFactors;
+        // For each keypoint loop over the poses and get the projection of that keypoint onto that pose
+        double X_avg = 0 ;
+        double Y_avg = 0 ;
+        double Z_avg = 0;
+        
+        for (itr=landmark_to_poses.begin(); itr != landmark_to_poses.end(); itr++ ) {
+            int pose_id = itr->first;
+            Point3f measurement_cv2 = itr->second;
+            Point2 measurement;
+            measurement(0) = measurement_cv2.x;
+            measurement(1) = measurement_cv2.y;
+
+            double x = measurement(0);
+            double y = measurement(1);
+            double d = measurement_cv2.z;
+
+            double uR = x - d;
+            if (d < 20 || uR < 0) {
+                cout << "Skipping this iteration d=" << d << "uR= " << uR <<  " x=" << x << " frame " << frames[pose_id] + ".jpg" << std::endl;
+                skipped_landmark_at_pose = true;
+                break;
+            }
+
+            float Z = baseline*focal_length/d;
+            float X = (x-cx)*Z/focal_length;
+            float Y = (y-cy)*Z/focal_length;
+
+            X_avg += X;
+            Y_avg += Y;
+            Z_avg += Z;
+            //if(!processed_first_pose) {
+            //    x0 = x;
+            //    y0 = y;
+            //    d0 = d;
+            //    processed_first_pose = true;
+            //}
+
+            //cout << uL << " | " << uR << " | " << d << endl;
+            //graph.emplace_shared<GenericStereoFactor<Pose3, Point3>>(
+            //   StereoPoint2(uL, uR, v), model, Symbol('x', i), Symbol('l', j), Kstereo);
+            //std::cout << "Adding factor " << std::endl;
+
+            GenericStereoFactor<Pose3, Point3> factor(StereoPoint2(x, uR, y), model, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kstereo);
+
+            //GenericProjectionFactor<Pose3, Point3, Cal3_S2> factor(measurement, noise, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kgt);
+            projectionFactors.push_back(factor);
+            //graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(
+            //    measurement, noise, Symbol('x', pose_id), Symbol('l', landmark_id), Kgt);  
+        }
+        if(skipped_landmark_at_pose) continue;
+
+        for(int pr=0; pr < projectionFactors.size(); pr++) {
+            //graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(projectionFactors[pr]);       
+             graph.emplace_shared<GenericStereoFactor<Pose3, Point3>> (projectionFactors[pr]);
+        }
+        
+
+        landmark3d(0) = X_avg/landmark_to_poses.size();
+        landmark3d(1) = Y_avg/landmark_to_poses.size();
+        landmark3d(2) = Z_avg/landmark_to_poses.size();
+        landmarks3d.push_back(landmark3d);
+        initialEstimate.insert<Point3>(Symbol('l', landmark_id_in_graph), landmark3d);
+        // Because the structure-from-motion problem has a scale ambiguity, the
+        // problem is still under-constrained Here we add a prior on the position of
+        // the first landmark. This fixes the scale by indicating the distance between
+        // the first camera and the first landmark. All other landmark positions are
+        // interpreted using this scale.
+        auto pointNoise = noiseModel::Isotropic::Sigma(3, 0.1);
+        if(landmark_id_in_graph == 0) {
+            graph.addPrior(Symbol('l', 0), landmark3d,
+                        pointNoise);  // add directly to graph
+        }
+
+        // TESTING CONDITION NEEDS TO BE REMOVED
+        //if(landmark_id_in_graph > 34 ) {
+        //   break;
+        //}
+        landmark_id_in_graph++;
+        cout<<landmark_id_in_graph<<endl;
+    }
+    
+    cout << "populated poses" << endl;
+    cout << poses.size() << endl;
+    for(int i=0; i< poses.size(); ++i)
+    {
+      std::cout << poses[i] << ' ' << endl;
+    }
+    
+    graph.print("Factor Graph:\n");
+    initialEstimate.print("initial");
+
+    gtsam::Values result;
+    DoglegParams params;
+    graph_cp = graph.clone();
+    cout << "initial error = " << graph.error(initialEstimate) << endl;
+    result = DoglegOptimizer(graph, initialEstimate, params).optimize();
+    //result.print("Final results:\n");
+    
+    cout << "final error = " << graph.error(result) << endl;
+    ret_optimize ret_optimizer;
+    ret_optimizer.graph = graph_cp;
+    ret_optimizer.result = result;
+    ret_optimizer.landmarks3d = landmarks3d;
+
+    vector<float> pointcloud;
+    cout << "landmark_id_in_graph " << landmark_id_in_graph << endl;
+    for (int p=0; p<landmark_id_in_graph; p++) {
+        Point3 p3D = result.at(Symbol('l', p).key()).cast<Point3>();
+        pointcloud.push_back(p3D(0));
+        pointcloud.push_back(p3D(1));
+        pointcloud.push_back(p3D(2));   
+    }
+    Mat m = Mat(pointcloud.size()/3, 1, CV_32FC3);
+    cout << m.size() << endl;
+    memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
+    save_vtk<float>(m, "/home/remote_user2/olslam/pointcloud_final.vtk");    
+
+    return ret_optimizer;
+}  
+
+
+
 ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper, 
                        Cal3_S2::shared_ptr Kgt, 
                        vector<string> frames, 
@@ -36,13 +207,6 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
     }
     vector<Point3> landmarks3d;
     int landmark_id_in_graph = 0;
-    bool seen_first = false;
-    bool seen_first_42 = false;
-    bool seen_first_48 = false;
-    bool seen_first_64 = false;
-    bool seen_first_66 = false;
-    bool seen_twice_66 = false;
-    bool seen_first_21 = false;
     for ( it=KeypointMapper.begin() ; it != KeypointMapper.end(); it++ ) {
         //int frame_id = considered_poses[i];
         map<int, Point2f>::iterator itr;
@@ -92,44 +256,6 @@ ret_optimize Optimize(map<int, map<int, Point2f>> KeypointMapper,
             projectionFactors.push_back(factor);
             //graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(
             //    measurement, noise, Symbol('x', pose_id), Symbol('l', landmark_id), Kgt);  
-        }
-        if(skipped_landmark_at_pose) {
-            continue;
-        }
-        if(landmark_id_in_graph==21 & !seen_first_21) {
-            cout << "seen" << endl;
-            seen_first_21 = true;
-            continue;
-        }
-        if(landmark_id_in_graph==32 & !seen_first) {
-            cout << "seen" << endl;
-            seen_first = true;
-            continue;
-        }
-        if(landmark_id_in_graph==42 & !seen_first_42) {
-            cout << "seen" << endl;
-            seen_first_42 = true;
-            continue;
-        }
-        if(landmark_id_in_graph==48 & !seen_first_48) {
-            cout << "seen" << endl;
-            seen_first_48 = true;
-            continue;
-        }
-        if(landmark_id_in_graph==64 & !seen_first_64) {
-            cout << "seen" << endl;
-            seen_first_64 = true;
-            continue;
-        }
-        if(landmark_id_in_graph==66 & !seen_first_66) {
-            cout << "seen" << endl;
-            seen_first_66 = true;
-            continue;
-        }
-        if(landmark_id_in_graph==66 & !seen_twice_66) {
-            cout << "seen" << endl;
-            seen_twice_66 = true;
-            continue;
         }
         for(int pr=0; pr < projectionFactors.size(); pr++) {
             graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(projectionFactors[pr]);            

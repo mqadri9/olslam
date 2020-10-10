@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
     int count = std::distance(boost::make_filter_iterator(pred, dir_first, dir_last),
                       boost::make_filter_iterator(pred, dir_last, dir_last));
 
-    for(int k=11; k <24; k++) {
+    for(int k=0; k <24; k++) {
         frames.push_back(to_string(k));
     }
     cout << frames.size() << endl;
@@ -127,9 +127,9 @@ int main(int argc, char* argv[]) {
     //test_sfm(result, Kgt, considered_poses);
     reconstruct_pointcloud(result, Kgt, considered_poses, frames);
     Cal3_S2::shared_ptr Kgt_res(new Cal3_S2(focal_length*RESIZE_FACTOR, focal_length*RESIZE_FACTOR, 0 /* skew */, cx*RESIZE_FACTOR, cy*RESIZE_FACTOR));
-    gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, frames, Kgt_res);
-    int num_sift_landmarks = ret_optimizer.landmarks3d.size();
-    result_to_vtk(result_reoptimize, num_sift_landmarks);
+    //gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, frames, Kgt_res);
+    //int num_sift_landmarks = ret_optimizer.landmarks3d.size();
+    //result_to_vtk(result_reoptimize, num_sift_landmarks);
 
     return 0;
 }
