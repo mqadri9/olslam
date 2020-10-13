@@ -393,8 +393,8 @@ int main(int argc, char* argv[]) {
     int horizontal_threshold_stereo = 200;
     int horizontal_threshold_temporal = 300;
     int cost_threshold_stereo = 100;
-    int cost_threshold_temporal = 50;
-    for(int i=0; i<15 ; i++) {
+    int cost_threshold_temporal = 100;
+    for(int i=0; i<30 ; i++) {
         framesImages.push_back(to_string(i));
         cout << "Processing a new image index:" << i << endl;
         Frame frame;
@@ -532,7 +532,7 @@ int main(int argc, char* argv[]) {
 
     // Test GTSAM output  
     //test_sfm(result, Kgt, considered_poses);
-    //reconstruct_pointcloud(result, Kgt, considered_poses, framesImages);
+    reconstruct_pointcloud(result, Kgt, considered_poses, framesImages);
 
     return 0;
 

@@ -11,12 +11,12 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 2 pixel in u and v
     const Cal3_S2Stereo::shared_ptr Kstereo(
       new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
-    const auto model = noiseModel::Isotropic::Sigma(3, 1);    
+    const auto model = noiseModel::Isotropic::Sigma(3, 3);    
     // Create a Factor Graph and Values to hold the new data
     NonlinearFactorGraph graph;
     NonlinearFactorGraph graph_cp;
     auto poseNoise = noiseModel::Diagonal::Sigmas(
-        (Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.3))
+        (Vector(6) << Vector3::Constant(0.2), Vector3::Constant(0.6))
             .finished());  // 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
     graph.addPrior(Symbol('x', 0), poses[0], poseNoise);  // add directly to graph
     int N = 2; //poses.size();
@@ -77,10 +77,21 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
             float Z = baseline*focal_length/d;
             float X = (x-cx)*Z/focal_length;
             float Y = (y-cy)*Z/focal_length;
-
+            Point3 x3D; 
+            x3D(0) = X;
+            x3D(1) = Y;
+            x3D(2) = Z;
+            Point3 x3Dw = poses[pose_id].transform_from(x3D);
+            
+            X_avg += x3Dw(0);
+            Y_avg += x3Dw(1);
+            Z_avg += x3Dw(2);
+            
+            /*
             X_avg += X;
             Y_avg += Y;
             Z_avg += Z;
+            */
             //if(!processed_first_pose) {
             //    x0 = x;
             //    y0 = y;
@@ -156,7 +167,7 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     ret_optimizer.landmarks3d = landmarks3d;
 
     vector<float> pointcloud;
-    cout << "landmark_id_in_graph " << landmark_id_in_graph << endl;
+    cout << "landmar_id_in_graph " << landmark_id_in_graph << endl;
     for (int p=0; p<landmark_id_in_graph; p++) {
         Point3 p3D = result.at(Symbol('l', p).key()).cast<Point3>();
         pointcloud.push_back(p3D(0));
@@ -167,6 +178,19 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     cout << m.size() << endl;
     memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
     save_vtk<float>(m, "/home/remote_user2/olslam/pointcloud_final.vtk");    
+
+    vector<float> pointcloudmp;
+    cout << "landmar_id_in_graph " << landmark_id_in_graph << endl;
+    for (int p=0; p<landmark_id_in_graph; p++) {
+        Point3 p3D = result.at(Symbol('l', p).key()).cast<Point3>();
+        pointcloudmp.push_back(p3D(0));
+        pointcloudmp.push_back(p3D(1));
+        pointcloudmp.push_back(0);   
+    }
+    Mat mp = Mat(pointcloudmp.size()/3, 1, CV_32FC3);
+    cout << mp.size() << endl;
+    memcpy(mp.data, pointcloudmp.data(), pointcloudmp.size()*sizeof(float)); 
+    save_vtk<float>(mp, "/home/remote_user2/olslam/pointcloud_final_plane.vtk"); 
 
     return ret_optimizer;
 }  
