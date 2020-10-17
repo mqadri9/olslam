@@ -134,13 +134,7 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
             graph.addPrior(Symbol('l', 0), landmark3d,
                         pointNoise);  // add directly to graph
         }
-
-        // TESTING CONDITION NEEDS TO BE REMOVED
-        //if(landmark_id_in_graph > 34 ) {
-        //   break;
-        //}
         landmark_id_in_graph++;
-        cout<<landmark_id_in_graph<<endl;
     }
     
     cout << "populated poses" << endl;
@@ -150,8 +144,8 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
       std::cout << poses[i] << ' ' << endl;
     }
     
-    graph.print("Factor Graph:\n");
-    initialEstimate.print("initial");
+    //graph.print("Factor Graph:\n");
+    //initialEstimate.print("initial");
 
     gtsam::Values result;
     DoglegParams params;
@@ -385,7 +379,7 @@ gtsam::Values Optimize_object_loc(ret_optimize ret_optimizer, vector<int> consid
         cv::reprojectImageTo3D(disparity, reprojection, Q);
         Pose3 P = result.at(Symbol('x', i).key()).cast<Pose3>();
         //cout << P << endl;
-        vector<vector<float>> points = get_points(stoi(frames[i]), disparity);
+        vector<vector<float>> points = get_points(stoi(frames[i]));
         w_points_3d = extract_world_points(world_3d_objects);
         cout << "w_points_3d " << w_points_3d.size() << endl;
         int not_matched = 0;
@@ -551,4 +545,188 @@ void plot_projected_matches(vector<int> considered_poses, vector<string> frames,
         string p = "/home/remote_user2/olslam/pixel_matches/test_" + to_string(frame_id) +".jpg";
         cout << p << endl;
         cv::imwrite( p, HM);
+}
+
+struct ppx {
+    float dst;
+    float d_closest;
+};
+
+ppx from_2d_to_3d_by_closest_match(float x, float y, vector<Point3f> frame_centers) {
+    float c = INT_MAX;
+    float d_closest;
+    Point3f p3d;
+    for(int i = 0; i<frame_centers.size(); i++) {
+        float x1 = frame_centers[i].x;
+        float y1 = frame_centers[i].y;
+        float dst = sqrt(pow(x-x1, 2) + pow(y-y1, 2));
+        if(dst < c) {
+            c = dst;
+            d_closest = frame_centers[i].z;
+        }
+    }
+    ppx ret; 
+    ret.d_closest = d_closest;
+    ret.dst = c;
+    return ret;
+}
+
+gtsam::Values Optimize_object_loc2(ret_optimize ret_optimizer, 
+                                   vector<int> considered_poses, 
+                                   vector<string> frames, 
+                                   Cal3_S2::shared_ptr Kgt,
+                                   vector<vector<Point3f>> each_frames_centers) {
+    NonlinearFactorGraph graph = ret_optimizer.graph;
+    gtsam::Values result = ret_optimizer.result;
+    vector<Point3> landmarks3d = ret_optimizer.landmarks3d;   
+    //float data[16] = {1.0, 0, 0, -cx*RESIZE_FACTOR, 0, 1, 0, -cy*RESIZE_FACTOR, 0, 0, 0, focal_length*RESIZE_FACTOR, 0, 0, 1.0/baseline, (cx*RESIZE_FACTOR-cxprime*RESIZE_FACTOR)/baseline};
+    float data[16] = {1.0, 0, 0, -cx, 0, 1, 0, -cy, 0, 0, 0, focal_length, 0, 0, 1.0/baseline, (cx-cxprime)/baseline};
+    // Each semantic_objects_3d element contains the 3D coordinates of one of the 3D projected pixels 
+    // of the semantically segmented fruitlets. It also contains a list mapping each 3D world point to its 
+    // corresponding point in each camera frame
+    std::map<int, semantic_objects_3d> world_3d_objects;
+    long long int index_point = 0;
+    for(int i=0; i<frames.size(); i++) {
+        vector<worldpoint> w_points_3d;
+        string img_path_target = image_folder + "/frame" + frames[i] + ".jpg";
+        Mat img = imread( img_path_target);
+        Pose3 P = result.at(Symbol('x', i).key()).cast<Pose3>();
+        //cout << P << endl;
+        vector<vector<float>> points = get_points(stoi(frames[i]));
+        w_points_3d = extract_world_points(world_3d_objects);
+        cout << world_3d_objects.size() << endl;
+        //cout << "points " << points.size() << endl;
+        int not_matched = 0;
+        for (int ii=0; ii < points.size(); ii++) {
+            float x = points[ii][0];
+            float y = points[ii][1];
+            Point3 x3D;
+            Point3 xyd;
+            ppx ret = from_2d_to_3d_by_closest_match(x, y, each_frames_centers[i]);
+            if(ret.dst > 20) continue;
+
+            float Z = baseline*focal_length/ret.d_closest; 
+            float X = (x-cx)*Z/focal_length;
+            float Y = (y-cy)*Z/focal_length;
+            x3D(0) = X;
+            x3D(1) = Y;
+            x3D(2) = Z;
+            xyd(0) = x;
+            xyd(1) = y;
+            xyd(2) = ret.d_closest;
+
+            if(x3D(2) < baseline*30) {
+                Point3 x3Dw = P.transform_from(x3D);
+                semantic_objects_3d tmp;
+                if(i == 0) {
+                    camPoint c;
+                    tmp.x3Dw = x3Dw;
+                    c.x3D = x3D;
+                    c.frame_id = i;
+                    c.xyd = xyd; 
+                    tmp.cam_frame_3d_points.push_back(c);
+                    tmp.index = ii;
+                    index_point++;
+                    world_3d_objects.insert(std::make_pair(ii, tmp));
+                    continue;
+                }
+                double d = 999;
+                int index_min = -1;
+                for(int j = 0; j < w_points_3d.size(); j++) {
+                    double dt = xydist(x3Dw, w_points_3d[j].x3Dw);
+                    // Prevent 2 points to be associated with the same 3D world point                    
+                    if(dt < d  && !w_points_3d[j].matched && dt <0.005) {
+                        d = dt;
+                        index_min = j;
+                    }
+                }
+                if(index_min != -1) {
+                    //cout << " index_min " << index_min << " world3dobject " << world_3d_objects.size() << endl;
+                    w_points_3d[index_min].matched = true;
+                    camPoint c;
+                    c.frame_id = i;
+                    c.x3D = x3D;
+                    c.xyd = xyd;
+                    if ( !(world_3d_objects.find(index_min) == world_3d_objects.end()) ) {
+                        world_3d_objects.at(index_min).cam_frame_3d_points.push_back(c);
+                    }
+                    else {
+                        cout << "Did not find key.." << endl;
+                    }
+                    //cout << "we are here" << endl;
+                }
+                else {
+                    camPoint c;
+                    tmp.x3Dw = x3Dw;
+                    c.x3D = x3D;
+                    c.xyd = xyd;
+                    c.frame_id = i;
+                    tmp.cam_frame_3d_points.push_back(c);
+                    tmp.index = index_point;
+                    world_3d_objects.insert(std::make_pair(index_point, tmp));
+                    index_point++;
+                }  
+            }
+        }
+        //plot_projected_matches(considered_poses, frames, world_3d_objects, result, Kgt, i);
+    }
+
+    //update initial pose guess with the output of sift slam
+
+    Values initialEstimate;
+    for (size_t i = 0; i < frames.size(); ++i) {
+        initialEstimate.insert(
+            Symbol('x', i), result.at(Symbol('x', i).key()).cast<Pose3>());
+    }
+    int l_id = 0;
+    for (l_id; l_id < landmarks3d.size(); ++l_id) {
+        initialEstimate.insert<Point3>(Symbol('l', l_id), landmarks3d[l_id]);
+    }
+    cout << "Without fruitlet landmarks initial error = " << graph.error(initialEstimate) << endl;
+    auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 5 pixel in u and v
+    Pose3 Pn = Pose3();
+
+    const Cal3_S2Stereo::shared_ptr Kstereo(
+      new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
+
+    // world_3d_objects is a map where the key is the index 
+    // of a landmark (projected fruitlet pixel to 3D) and the value 
+    // is semantic_objects_3d struct
+    const auto model = noiseModel::Isotropic::Sigma(3, 5);
+    map<int, semantic_objects_3d>::iterator it;
+    for ( it = world_3d_objects.begin(); it != world_3d_objects.end(); it++ )
+    {
+        int id = it->first;
+        Point3 x3Dw = (it->second).x3Dw;
+        vector<camPoint> cam_frame_3d_points = (it->second).cam_frame_3d_points;
+        if (cam_frame_3d_points.size() < 3) {
+            continue;
+        }
+        initialEstimate.insert<Point3>(Symbol('l', l_id + id), x3Dw);
+        for (int ep= 0; ep < cam_frame_3d_points.size(); ep++) {
+            Point3 x3d_t = cam_frame_3d_points[ep].x3D;
+            int frame_id = cam_frame_3d_points[ep].frame_id;
+            Point3 xyd = cam_frame_3d_points[ep].xyd;
+            PinholeCamera<Cal3_S2> camera_n(Pn, *Kgt);
+            Point2 target = camera_n.project(x3d_t);
+            int uL = (int)target(0);
+            int v = (int)target(1);
+            int uR = uL - xyd(2);
+            
+            graph.emplace_shared<GenericStereoFactor<Pose3, Point3>>(
+               StereoPoint2(uL, uR, v), model, Symbol('x', frame_id), Symbol('l', l_id + id), Kstereo);
+
+            //graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(
+            //    target, noise, Symbol('x', frame_id), Symbol('l', l_id + id), Kgt);
+        }
+    }
+    gtsam::Values result_reoptimize;
+    DoglegParams params;
+    //initialEstimate.print();
+    //graph.print();
+    result_reoptimize = DoglegOptimizer(graph, initialEstimate, params).optimize();
+    //result.print("Final results:\n");
+    cout << "initial error = " << graph.error(initialEstimate) << endl;
+    cout << "final error = " << graph.error(result_reoptimize) << endl;
+    return result_reoptimize;
 }

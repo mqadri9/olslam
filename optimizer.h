@@ -11,6 +11,7 @@ struct ret_optimize{
 
 struct camPoint {
     Point3 x3D;
+    Point3 xyd;
     int frame_id;
 };
 
@@ -32,6 +33,10 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>>, Cal3_S2::shared_p
 vector<vector<float>> get_points(int, Mat);
 gtsam::Values Optimize_object_loc(ret_optimize, vector<int>, vector<string> frames, Cal3_S2::shared_ptr);
 void plot_projected_matches(vector<int>, vector<string>, std::map<int, semantic_objects_3d>, gtsam::Values, Cal3_S2::shared_ptr, int frame_id);
-
+gtsam::Values Optimize_object_loc2(ret_optimize ret_optimizer, 
+                                   vector<int> considered_poses, 
+                                   vector<string> frames, 
+                                   Cal3_S2::shared_ptr Kgt,
+                                   vector<vector<Point3f>> each_frames_centers);
 
 #endif

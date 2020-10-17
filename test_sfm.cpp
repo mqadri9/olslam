@@ -40,7 +40,7 @@ void reconstruct_pointcloud(gtsam::Values result, Cal3_S2::shared_ptr Kgt, vecto
         Pose3 P = result.at(Symbol('x', i).key()).cast<Pose3>();
         cout << P << endl;
         //vector<vector<float>> bounds3d = get_3d_bounds(considered_poses[i], disparity);
-        vector<vector<float>> points = get_points(stoi(frames[i]), disparity);
+        vector<vector<float>> points = get_points(stoi(frames[i]));
         Vec3b color;
         color[0] = 0;
         color[1] = 0;

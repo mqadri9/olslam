@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
     //test_sfm(result, Kgt, considered_poses);
     reconstruct_pointcloud(result, Kgt, considered_poses, frames);
     Cal3_S2::shared_ptr Kgt_res(new Cal3_S2(focal_length*RESIZE_FACTOR, focal_length*RESIZE_FACTOR, 0 /* skew */, cx*RESIZE_FACTOR, cy*RESIZE_FACTOR));
-    //gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, frames, Kgt_res);
+    gtsam::Values result_reoptimize = Optimize_object_loc(ret_optimizer, considered_poses, frames, Kgt_res);
     //int num_sift_landmarks = ret_optimizer.landmarks3d.size();
     //result_to_vtk(result_reoptimize, num_sift_landmarks);
 

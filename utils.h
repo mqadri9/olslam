@@ -93,10 +93,11 @@ static float baseline = 0.11;
 static float cx = 2012.978267793323;
 static float cxprime = 2012.978267793323;
 static float cy = 1525.658605179268;
-static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/rect1_fullres";
-static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/rect0_fullres";
-static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/disparities" ;
-static string csv_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/final_op_row4_left";
+static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/stereo_tmp_seed/rect1_fullres";
+static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/stereo_tmp_seed/rect0_fullres";
+static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/stereo_tmp_seed/disparities" ;
+static string csv_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/final_op_rows_2066_2116_left";
+static string csv_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/final_op_rows_2066_2116_right";
 static float ellipse_resize_factor = 0.15;
 
 #define PI   3.1415926535897932384626433832795
@@ -111,7 +112,7 @@ string getKpKey(Point2f);
 string getKpKey3(Point3f);
 PointMatcher<float>::DataPoints create_datapoints(Mat);
 void ShowBlackCircle( const cv::Mat&, cv::Point, int, Scalar);
-vector<vector<float>> get_points(int , Mat);
+vector<vector<float>> get_points(int);
 vector<vector<float>> get_3d_bounds(int, Mat);
 bool is_in_ellipse(float, float, float , float, float, float, float);
 int NumDigits(int);

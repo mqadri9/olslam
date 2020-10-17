@@ -87,7 +87,7 @@ bool is_in_ellipse(float xp, float yp,  float x, float y, float a, float b, floa
     }
 }
 
-vector<vector<float>> get_points(int pose_id, Mat disparity) {
+vector<vector<float>> get_points_at_edge(int pose_id) {
     string idx; 
     idx = to_string(pose_id);
     string filename =  csv_folder + "/res_" + idx + ".csv";
@@ -95,22 +95,44 @@ vector<vector<float>> get_points(int pose_id, Mat disparity) {
     vector<vector<float>> csv = read_csv(filename);
     vector<vector<float>> points;
     for(int j = 0; j < csv.size(); j++) {
-        float x1 = csv[j][8];
-        float y1 = csv[j][9];
-        float x2 = csv[j][10];
-        float y2 = csv[j][11];
+        float x1 = csv[j][8]/RESIZE_FACTOR;
+        float y1 = csv[j][9]/RESIZE_FACTOR;
+        float x2 = csv[j][10]/RESIZE_FACTOR;
+        float y2 = csv[j][11]/RESIZE_FACTOR;
         float x_center = (x1 + x2)/2;
         float y_center = (y1+y2) /2;
-        float d1 = disparity.at<uchar>((int)y_center,(int)x_center);
-        if(d1 == 0) {
-            continue;
-        }
         int w = int(x2) - int(x1);
         int h = int(y2) - int(y1);
-        float x = csv[j][3]*ellipse_resize_factor;
-        float y = csv[j][4]*ellipse_resize_factor;
-        float a = ellipse_resize_factor*csv[j][5]/2;
-        float b = ellipse_resize_factor*csv[j][6]/2;
+        float x = csv[j][3];
+        float y = csv[j][4];
+        float a = csv[j][5]/2;
+        float b = csv[j][6]/2;
+        float alpha = csv[j][7]*PI/180;
+        
+    }
+    return points;
+}
+
+vector<vector<float>> get_points(int pose_id) {
+    string idx; 
+    idx = to_string(pose_id);
+    string filename =  csv_folder + "/res_" + idx + ".csv";
+    cout << "CSV FILE " << filename << endl;
+    vector<vector<float>> csv = read_csv(filename);
+    vector<vector<float>> points;
+    for(int j = 0; j < csv.size(); j++) {
+        float x1 = csv[j][8]/RESIZE_FACTOR;
+        float y1 = csv[j][9]/RESIZE_FACTOR;
+        float x2 = csv[j][10]/RESIZE_FACTOR;
+        float y2 = csv[j][11]/RESIZE_FACTOR;
+        float x_center = (x1 + x2)/2;
+        float y_center = (y1+y2) /2;
+        int w = int(x2) - int(x1);
+        int h = int(y2) - int(y1);
+        float x = csv[j][3];
+        float y = csv[j][4];
+        float a = csv[j][5]/2;
+        float b = csv[j][6]/2;
         float alpha = csv[j][7]*PI/180;
         for(int ww=0; ww < w; ww++) {
             for (int hh=0; hh < h; hh++) {
