@@ -202,7 +202,7 @@ vector<vector<float>> run_(vector<Point2f> centers_l_filtered,
             //if(bb_left[0] < 500 || bb_right[0] > img_width - 500) {
             //    HungarianCost[k][j] = 10e8;
             //}
-            if(xdist < 200) {
+            if(xdist < 50) {
                 HungarianCost[k][j] = 10e8;
             }
             else if(vdist > vertical_threshold) {
@@ -337,8 +337,8 @@ vector<vector<float>> run_hungarian(r left, r right, int img_width, int vertical
         th_high_r = 3*mean_r; //+ std_r/2;
     }
     else {
-        th_low_r = 4*mean_r; //- std_r/4 ;
-        th_high_r = 4*mean_r; //+ std_r/4;
+        th_low_r = 100*mean_r; //- std_r/4 ;
+        th_high_r = 100*mean_r; //+ std_r/4;
     }
 
     if (std_l < mean_l/2) {
@@ -346,8 +346,8 @@ vector<vector<float>> run_hungarian(r left, r right, int img_width, int vertical
         th_high_l = 3*mean_l ;//+ std_l/2;
     }
     else {
-        th_low_l = 4*mean_l; //- std_l/4;
-        th_high_l = 4*mean_l; //+ std_l/4;
+        th_low_l = 100*mean_l; //- std_l/4;
+        th_high_l = 100*mean_l; //+ std_l/4;
     }
 
     unordered_map<int, int> left_lower_indexer;

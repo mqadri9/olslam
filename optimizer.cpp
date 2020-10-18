@@ -18,7 +18,7 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     const auto model = noiseModel::Isotropic::Sigma(3, 3);    
     // Create a Factor Graph and Values to hold the new data
     auto poseNoise = noiseModel::Diagonal::Sigmas(
-        (Vector(6) << Vector3::Constant(0.2), Vector3::Constant(0.6))
+        (Vector(6) << Vector3::Constant(0.05), Vector3::Constant(0.05))
             .finished());  // 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
     NonlinearFactorGraph graph;
     int N = 2; //poses.size();
@@ -181,7 +181,7 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     Mat m = Mat(pointcloud.size()/3, 1, CV_32FC3);
     cout << m.size() << endl;
     memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
-    save_vtk<float>(m, "/home/remote_user2/olslam/pointcloud_final.vtk");    
+    save_vtk<float>(m, "/home/remote_user2/olslam/pointcloud_final_" +to_string(start_pose)  + ".vtk");    
 
     vector<float> pointcloudmp;
     cout << "landmar_id_in_graph " << landmark_id_in_graph << endl;
@@ -194,7 +194,7 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     Mat mp = Mat(pointcloudmp.size()/3, 1, CV_32FC3);
     cout << mp.size() << endl;
     memcpy(mp.data, pointcloudmp.data(), pointcloudmp.size()*sizeof(float)); 
-    save_vtk<float>(mp, "/home/remote_user2/olslam/pointcloud_final_plane.vtk"); 
+    save_vtk<float>(mp, "/home/remote_user2/olslam/pointcloud_final_plane_" +to_string(start_pose)  + ".vtk"); 
 
     return ret_optimizer_updated;
 }  

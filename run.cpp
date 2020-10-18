@@ -7,7 +7,7 @@ PM::ICP icp;
 #include "Hungarian.h"
 #include "test_sfm.h"
 #include "hungarian.h"
-
+#include "detector.h"
 struct retPointcloud {
     Mat pc;
     vector<Point2f> src;
@@ -185,8 +185,8 @@ int main(int argc, char* argv[]) {
     int vertical_threshold_stereo = 20;
     int horizontal_threshold_stereo = 200;
     int horizontal_threshold_temporal = 300;
-    int cost_threshold_stereo = 150;
-    int cost_threshold_temporal = 150;
+    int cost_threshold_stereo = 200;
+    int cost_threshold_temporal = 200;
     vector<vector<Point3f>> each_frames_centers;
     int pose_id = 1;
     vector<Pose3> poses;
@@ -209,7 +209,8 @@ int main(int argc, char* argv[]) {
     map<int,int> landmark_id_to_graph_id;
     Cal3_S2::shared_ptr Kgt(new Cal3_S2(focal_length, focal_length, 0 /* skew */, cx, cy));
     ret_optimize ret_optimizer;
-    for(int i=0; i<60 ; i++) {
+    string detector = "combined";
+    for(int i=0; i<41 ; i++) {
         framesImages.push_back(to_string(i));
         cout << "Processing a new image index:" << i << endl;
         Frame frame;
@@ -230,17 +231,75 @@ int main(int argc, char* argv[]) {
         r right = get_points_2D(filename_r);
 
         int img_width = img_l.size().width;
+        vector<vector<float>> stereo_correspondences;
+        if(detector == "surf") {
+            stereo_correspondences = find_correspondences_surf(left, 
+                                                                right, 
+                                                                img_width, 
+                                                                vertical_threshold_stereo, 
+                                                                horizontal_threshold_stereo, 
+                                                                cost_threshold_stereo,
+                                                                img_l,
+                                                                img_r,
+                                                                i,
+                                                                "stereo");
 
-        vector<vector<float>> stereo_correspondences = run_hungarian(left, 
-                                                                     right, 
-                                                                     img_width, 
-                                                                     vertical_threshold_stereo, 
-                                                                     horizontal_threshold_stereo, 
-                                                                     cost_threshold_stereo,
-                                                                     img_l,
-                                                                     img_r,
-                                                                     i,
-                                                                     "stereo");
+
+        }
+        else if (detector == "sift") {
+            stereo_correspondences = find_correspondences_sift(left, 
+                                                                right, 
+                                                                img_width, 
+                                                                vertical_threshold_stereo, 
+                                                                horizontal_threshold_stereo, 
+                                                                cost_threshold_stereo,
+                                                                img_l,
+                                                                img_r,
+                                                                i,
+                                                                "stereo");
+        }
+
+        else if(detector == "hungarian") {
+            stereo_correspondences = run_hungarian(left, 
+                                                        right, 
+                                                        img_width, 
+                                                        vertical_threshold_stereo, 
+                                                        horizontal_threshold_stereo, 
+                                                        cost_threshold_stereo,
+                                                        img_l,
+                                                        img_r,
+                                                        i,
+                                                        "stereo");
+        }
+        else if(detector == "combined") {
+            stereo_correspondences = run_hungarian(left, 
+                                                        right, 
+                                                        img_width, 
+                                                        vertical_threshold_stereo, 
+                                                        horizontal_threshold_stereo, 
+                                                        cost_threshold_stereo,
+                                                        img_l,
+                                                        img_r,
+                                                        i,
+                                                        "stereo");
+
+            vector<vector<float>> sift_stereo_correspondences = find_correspondences_sift(left, 
+                                                                right, 
+                                                                img_width, 
+                                                                vertical_threshold_stereo, 
+                                                                horizontal_threshold_stereo, 
+                                                                cost_threshold_stereo,
+                                                                img_l,
+                                                                img_r,
+                                                                i,
+                                                                "stereo");
+
+            for (int jk =0; jk<sift_stereo_correspondences.size(); jk++) {
+                stereo_correspondences.push_back(sift_stereo_correspondences[jk]);
+            }
+
+        }
+
 
         Mat pc = create_pc(&stereo_correspondences);
         frame.pc = pc;
@@ -263,19 +322,74 @@ int main(int argc, char* argv[]) {
         r prev = get_points_2D(filename_prev);
 
         Mat img_prev = frames[i-1].img_l;
-        vector<vector<float>> correspondences_temporal = run_hungarian(prev, 
-                                                                       left, 
-                                                                       img_width, 
-                                                                       vertical_threshold_temporal, 
-                                                                       horizontal_threshold_temporal, 
-                                                                       cost_threshold_temporal,
-                                                                       img_prev,
-                                                                       frame.img_l,
-                                                                       i,
-                                                                       "temporal"
-                                                                       );
+        vector<vector<float>> correspondences_temporal;
+        if (detector == "surf") {
+            correspondences_temporal = find_correspondences_surf(prev, 
+                                                                left, 
+                                                                img_width, 
+                                                                vertical_threshold_temporal, 
+                                                                horizontal_threshold_temporal, 
+                                                                cost_threshold_temporal,
+                                                                img_prev,
+                                                                frame.img_l,
+                                                                i,
+                                                                "temporal"
+                                                                );
+        }
+        else if (detector == "sift") {
+            correspondences_temporal = find_correspondences_sift(prev, 
+                                                                left, 
+                                                                img_width, 
+                                                                vertical_threshold_temporal, 
+                                                                horizontal_threshold_temporal, 
+                                                                cost_threshold_temporal,
+                                                                img_prev,
+                                                                frame.img_l,
+                                                                i,
+                                                                "temporal"
+                                                                );
+        }
+        else if(detector == "hungarian") {
+            correspondences_temporal = run_hungarian(prev, 
+                                                    left, 
+                                                    img_width, 
+                                                    vertical_threshold_temporal, 
+                                                    horizontal_threshold_temporal, 
+                                                    cost_threshold_temporal,
+                                                    img_prev,
+                                                    frame.img_l,
+                                                    i,
+                                                    "temporal"
+                                                    );
+        }
+        else if(detector == "combined") {
+            correspondences_temporal = run_hungarian(prev, 
+                                                    left, 
+                                                    img_width, 
+                                                    vertical_threshold_temporal, 
+                                                    horizontal_threshold_temporal, 
+                                                    cost_threshold_temporal,
+                                                    img_prev,
+                                                    frame.img_l,
+                                                    i,
+                                                    "temporal"
+                                                    );
+            vector<vector<float>> sift_correspondences_temporal = find_correspondences_sift(prev, 
+                                                            left, 
+                                                            img_width, 
+                                                            vertical_threshold_temporal, 
+                                                            horizontal_threshold_temporal, 
+                                                            cost_threshold_temporal,
+                                                            img_prev,
+                                                            frame.img_l,
+                                                            i,
+                                                            "temporal"
+                                                            );
+            for (int jk =0; jk<sift_correspondences_temporal.size(); jk++) {
+                correspondences_temporal.push_back(sift_correspondences_temporal[jk]);
+            }
+        } 
 
-        
         write_correspondences_temporal(img_prev, img_l, i, correspondences_temporal);
         frame.temporal_correspondences = correspondences_temporal; 
 
@@ -384,9 +498,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    for(int i=1; i<frames.size(); ++i) {
-
-    }
     //cout << "===================KEYPOINTMAPPER====================" << endl;
     //cout << KeypointMapper.size() << endl;
     //gtsam::Values result;

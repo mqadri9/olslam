@@ -93,11 +93,26 @@ static float baseline = 0.11;
 static float cx = 2012.978267793323;
 static float cxprime = 2012.978267793323;
 static float cy = 1525.658605179268;
+/*
 static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/stereo_tmp_seed/rect1_fullres";
 static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/stereo_tmp_seed/rect0_fullres";
 static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/stereo_tmp_seed/disparities" ;
 static string csv_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/final_op_rows_2066_2116_left";
 static string csv_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/final_op_rows_2066_2116_right";
+*/
+/*
+static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/rows_2000_2056/stereo_tmp_seed/rect1_fullres";
+static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/rows_2000_2056/stereo_tmp_seed/rect0_fullres";
+static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/rows_2000_2056/stereo_tmp_seed/disparities" ;
+static string csv_folder = "/home/remote_user2/olslam/sorghum_dataset/rows_2000_2056/final_op_rows_2000_2056_left";
+static string csv_folder_right = "/home/remote_user2/olslam/sorghum_dataset/rows_2000_2056/final_op_rows_2000_2056_right";
+*/
+static string image_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/rect1_fullres";
+static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/rect0_fullres";
+static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/stereo_tmp_seed/disparities" ;
+static string csv_folder = "/home/remote_user2/olslam/sorghum_dataset/row4/final_op_row4_left";
+static string csv_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row4/final_op_row4_right";
+static string root_directory = "/home/remote_user2/olslam";
 
 
 static float ellipse_resize_factor = 0.15;
