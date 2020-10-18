@@ -258,7 +258,30 @@ int main(int argc, char* argv[]) {
                                                                 i,
                                                                 "stereo");
         }
-
+        else if(detector=="akaze") {
+            stereo_correspondences = find_correspondences_akaze(left, 
+                                                                right, 
+                                                                img_width, 
+                                                                vertical_threshold_stereo, 
+                                                                horizontal_threshold_stereo, 
+                                                                cost_threshold_stereo,
+                                                                img_l,
+                                                                img_r,
+                                                                i,
+                                                                "stereo");
+        }
+        else if(detector=="orb") {
+            stereo_correspondences = find_correspondences_orb(left, 
+                                                                right, 
+                                                                img_width, 
+                                                                vertical_threshold_stereo, 
+                                                                horizontal_threshold_stereo, 
+                                                                cost_threshold_stereo,
+                                                                img_l,
+                                                                img_r,
+                                                                i,
+                                                                "stereo");
+        }
         else if(detector == "hungarian") {
             stereo_correspondences = run_hungarian(left, 
                                                         right, 
@@ -338,6 +361,32 @@ int main(int argc, char* argv[]) {
         }
         else if (detector == "sift") {
             correspondences_temporal = find_correspondences_sift(prev, 
+                                                                left, 
+                                                                img_width, 
+                                                                vertical_threshold_temporal, 
+                                                                horizontal_threshold_temporal, 
+                                                                cost_threshold_temporal,
+                                                                img_prev,
+                                                                frame.img_l,
+                                                                i,
+                                                                "temporal"
+                                                                );
+        }
+        else if(detector=="akaze") {
+            correspondences_temporal = find_correspondences_akaze(prev, 
+                                                                left, 
+                                                                img_width, 
+                                                                vertical_threshold_temporal, 
+                                                                horizontal_threshold_temporal, 
+                                                                cost_threshold_temporal,
+                                                                img_prev,
+                                                                frame.img_l,
+                                                                i,
+                                                                "temporal"
+                                                                );
+        }
+        else if(detector=="orb") {
+            correspondences_temporal = find_correspondences_orb(prev, 
                                                                 left, 
                                                                 img_width, 
                                                                 vertical_threshold_temporal, 

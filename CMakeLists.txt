@@ -46,8 +46,8 @@ message("${EXTERNAL_LIBS}")
 add_executable(stereo StereoExample.cpp utils.cpp ./utils.h)
 add_executable(icp_2d icp_2d.cpp Hungarian.cpp utils.cpp ./utils.h ./Hungarian.h)
 
-add_executable(run run.cpp hungarian.cpp Procrustes.cpp utils.cpp pointcloud.cpp optimizer.cpp test_sfm.cpp pose.cpp Hungarian.cpp  
-              ./hungarian.h ./Procrustes.h ./utils.h ./pointcloud.h ./optimizer.h ./test_sfm.h ./pose.h ./Hungarian.h)
+add_executable(run run.cpp hungarian.cpp Procrustes.cpp utils.cpp pointcloud.cpp optimizer.cpp test_sfm.cpp pose.cpp Hungarian.cpp detector.cpp
+              ./hungarian.h ./Procrustes.h ./utils.h ./pointcloud.h ./optimizer.h ./test_sfm.h ./pose.h ./Hungarian.h ./detector.h)
 
 add_executable(main main.cpp Procrustes.cpp utils.cpp pointcloud.cpp optimizer.cpp test_sfm.cpp pose.cpp 
                ./Procrustes.h ./utils.h ./pointcloud.h ./optimizer.h ./test_sfm.h ./pose.h)

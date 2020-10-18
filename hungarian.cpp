@@ -25,7 +25,7 @@ void write_correspondences(Mat img_l, Mat img_r, int frame_id, vector<vector<flo
         //    break;
         //}
     }
-    imwrite("/home/remote_user2/olslam/hungarian_matches/frame" + to_string(frame_id) + ".jpg", HM); 
+    imwrite(root_directory + "/hungarian_matches/frame" + to_string(frame_id) + ".jpg", HM); 
 }
 
 void write_correspondences_temporal(Mat img_l, Mat img_r, int frame_id, vector<vector<float>> stereo_correspondences)
@@ -54,7 +54,7 @@ void write_correspondences_temporal(Mat img_l, Mat img_r, int frame_id, vector<v
         //    break;
         //}
     }
-    imwrite("/home/remote_user2/olslam/hungarian_temporal_matches/frame" + to_string(frame_id) + ".jpg", HM); 
+    imwrite(root_directory + "/hungarian_temporal_matches/frame" + to_string(frame_id) + ".jpg", HM); 
 }
 
 void print_centers(vector<Point2f> centers, Mat img, string save_path)
@@ -433,16 +433,16 @@ vector<vector<float>> run_hungarian(r left, r right, int img_width, int vertical
 
     cout << "Processing image " << to_string(frame_id) << " | " << letype << endl;
     if (letype=="stereo") {
-        bbox_lower_left = "/home/remote_user2/olslam/stereo_small/left/frame" + to_string(frame_id) + ".jpg";
-        bbox_lower_right = "/home/remote_user2/olslam/stereo_small/right/frame" + to_string(frame_id) + ".jpg";
-        bbox_upper_right = "/home/remote_user2/olslam/stereo_large/right/frame" + to_string(frame_id) + ".jpg";
-        bbox_upper_left =  "/home/remote_user2/olslam/stereo_large/left/frame" + to_string(frame_id) + ".jpg";
+        bbox_lower_left = root_directory + "/stereo_small/left/frame" + to_string(frame_id) + ".jpg";
+        bbox_lower_right = root_directory + "/stereo_small/right/frame" + to_string(frame_id) + ".jpg";
+        bbox_upper_right = root_directory + "/stereo_large/right/frame" + to_string(frame_id) + ".jpg";
+        bbox_upper_left =  root_directory +  "/stereo_large/left/frame" + to_string(frame_id) + ".jpg";
     }
     else {
-        bbox_lower_left = "/home/remote_user2/olslam/temporal_small/left/frame" + to_string(frame_id) + ".jpg";
-        bbox_lower_right = "/home/remote_user2/olslam/temporal_small/right/frame" + to_string(frame_id) + ".jpg";
-        bbox_upper_right = "/home/remote_user2/olslam/temporal_large/right/frame" + to_string(frame_id) + ".jpg";
-        bbox_upper_left =  "/home/remote_user2/olslam/temporal_large/left/frame" + to_string(frame_id) + ".jpg"   ;     
+        bbox_lower_left = root_directory + "/temporal_small/left/frame" + to_string(frame_id) + ".jpg";
+        bbox_lower_right = root_directory + "/temporal_small/right/frame" + to_string(frame_id) + ".jpg";
+        bbox_upper_right = root_directory + "/temporal_large/right/frame" + to_string(frame_id) + ".jpg";
+        bbox_upper_left =  root_directory + "/temporal_large/left/frame" + to_string(frame_id) + ".jpg"   ;     
     }
 
     cout << centers_l_filtered_lower.size() << endl;

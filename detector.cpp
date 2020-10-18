@@ -118,10 +118,17 @@ vector<vector<float>> find_correspondences_sift(r left, r right, int img_width, 
 }
 
 vector<vector<float>> find_correspondences_orb(r left, r right, int img_width, int vertical_threshold, int horizontal_threshold, int cost_threshold, Mat img_l, Mat img_r, int frame_id, string letype) {
+    const double akaze_thresh = 3e-4; // AKAZE detection threshold set to locate about 1000 keypoints
+    const double ransac_thresh = 2.5f; // RANSAC inlier threshold
+    const double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
+    const int bb_min_inliers = 100; // Minimal number of inliers to draw bounding box
+    const int stats_update_period = 10; // On-screen statistics are updated every 10 frames
+    
+    
     std::vector<KeyPoint> keypoints1, keypoints2;
     int minHessian = 400;
     const float ratio = 0.8f;    
-    cv::Ptr<cv::xfeatures2d::ORB> detector = cv::xfeatures2d::ORB::create();
+    Ptr<ORB> detector = ORB::create(1000, 1.2f, 8, 31, 0, 2, 0, 31, 20);
     Mat descriptors1, descriptors2; 
     Mat d1, d2;
     Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
@@ -151,6 +158,7 @@ vector<vector<float>> find_correspondences_orb(r left, r right, int img_width, i
                  Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
     cout <<"Writing image " <<letype << endl;
     if(letype=="stereo") {
+        std::cout << "AAAAAAAAAAAA " << img_matches.size() << endl;
         imwrite(root_directory + "/orb_stereo/frame" + to_string(frame_id) + ".jpg", img_matches); 
     } 
     else{
@@ -175,10 +183,16 @@ vector<vector<float>> find_correspondences_orb(r left, r right, int img_width, i
 }
 
 vector<vector<float>> find_correspondences_akaze(r left, r right, int img_width, int vertical_threshold, int horizontal_threshold, int cost_threshold, Mat img_l, Mat img_r, int frame_id, string letype) {
+    const double akaze_thresh = 3e-4; // AKAZE detection threshold set to locate about 1000 keypoints
+    const double ransac_thresh = 2.5f; // RANSAC inlier threshold
+    const double nn_match_ratio = 0.8f; // Nearest-neighbour matching ratio
+    const int bb_min_inliers = 100; // Minimal number of inliers to draw bounding box
+    const int stats_update_period = 10; // On-screen statistics are updated every 10 frames
+    
     std::vector<KeyPoint> keypoints1, keypoints2;
     int minHessian = 400;
     const float ratio = 0.8f;    
-    cv::Ptr<cv::xfeatures2d::AKAZE> detector = cv::xfeatures2d::AKAZE::create();
+    Ptr<AKAZE> detector = AKAZE::create();
     Mat descriptors1, descriptors2; 
     Mat d1, d2;
     Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
@@ -230,3 +244,4 @@ vector<vector<float>> find_correspondences_akaze(r left, r right, int img_width,
     }
     return correspondences;
 }
+

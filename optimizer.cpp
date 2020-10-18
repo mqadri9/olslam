@@ -181,7 +181,7 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     Mat m = Mat(pointcloud.size()/3, 1, CV_32FC3);
     cout << m.size() << endl;
     memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
-    save_vtk<float>(m, "/home/remote_user2/olslam/pointcloud_final_" +to_string(start_pose)  + ".vtk");    
+    save_vtk<float>(m, root_directory + "/pointcloud_final_" +to_string(start_pose)  + ".vtk");    
 
     vector<float> pointcloudmp;
     cout << "landmar_id_in_graph " << landmark_id_in_graph << endl;
@@ -194,7 +194,7 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     Mat mp = Mat(pointcloudmp.size()/3, 1, CV_32FC3);
     cout << mp.size() << endl;
     memcpy(mp.data, pointcloudmp.data(), pointcloudmp.size()*sizeof(float)); 
-    save_vtk<float>(mp, "/home/remote_user2/olslam/pointcloud_final_plane_" +to_string(start_pose)  + ".vtk"); 
+    save_vtk<float>(mp, root_directory + "/pointcloud_final_plane_" +to_string(start_pose)  + ".vtk"); 
 
     return ret_optimizer_updated;
 }  
@@ -372,7 +372,7 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     Mat m = Mat(pointcloud.size()/3, 1, CV_32FC3);
     cout << m.size() << endl;
     memcpy(m.data, pointcloud.data(), pointcloud.size()*sizeof(float)); 
-    save_vtk<float>(m, "/home/remote_user2/olslam/pointcloud_final.vtk");    
+    save_vtk<float>(m, root_directory + "/pointcloud_final.vtk");    
 
     vector<float> pointcloudmp;
     cout << "landmar_id_in_graph " << landmark_id_in_graph << endl;
@@ -385,7 +385,7 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
     Mat mp = Mat(pointcloudmp.size()/3, 1, CV_32FC3);
     cout << mp.size() << endl;
     memcpy(mp.data, pointcloudmp.data(), pointcloudmp.size()*sizeof(float)); 
-    save_vtk<float>(mp, "/home/remote_user2/olslam/pointcloud_final_plane.vtk"); 
+    save_vtk<float>(mp, root_directory + "/pointcloud_final_plane.vtk"); 
 
     return ret_optimizer;
 }  
@@ -743,7 +743,7 @@ void plot_projected_matches(vector<int> considered_poses, vector<string> frames,
             }
         }
     }
-        string p = "/home/remote_user2/olslam/pixel_matches/test_" + to_string(frame_id) +".jpg";
+        string p = root_directory + "/pixel_matches/test_" + to_string(frame_id) +".jpg";
         cout << p << endl;
         cv::imwrite( p, HM);
 }
