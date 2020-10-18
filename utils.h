@@ -98,6 +98,8 @@ static string image_folder_right = "/home/remote_user2/olslam/sorghum_dataset/ro
 static string data_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/stereo_tmp_seed/disparities" ;
 static string csv_folder = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/final_op_rows_2066_2116_left";
 static string csv_folder_right = "/home/remote_user2/olslam/sorghum_dataset/row_2066_2116/final_op_rows_2066_2116_right";
+
+
 static float ellipse_resize_factor = 0.15;
 
 #define PI   3.1415926535897932384626433832795
