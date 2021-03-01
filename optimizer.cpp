@@ -1,31 +1,55 @@
 #include "optimizer.h"
 
 #include "SFMdata.h"
+#include <gtsam/slam/BetweenFactor.h>
 
 ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper, 
                                     Cal3_S2::shared_ptr Kgt, 
                                     vector<string> frames, 
                                     vector<int> considered_poses, 
                                     vector<Pose3> poses,
+                                    vector<Pose3> poses_between,
                                     map<int,int>* landmark_id_to_graph_id,
                                     int start_pose,
                                     ret_optimize ret_optimizer) {
 
     // Define the camera observation noise model
-    auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 2 pixel in u and v
-    const Cal3_S2Stereo::shared_ptr Kstereo(
-      new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
+    //auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 2 pixel in u and v
+    
+    // pointNoise is the 3D landmark associated pose in x, y, and z
+    auto pointNoise = noiseModel::Isotropic::Sigma(3, 0.1);
+    
+    // model is the stereo factor noise model
     const auto model = noiseModel::Isotropic::Sigma(3, 3);    
-    // Create a Factor Graph and Values to hold the new data
+    auto huber = noiseModel::Robust::Create(noiseModel::mEstimator::Huber::Create(1.3), model);
+
+    // Prior noise
     auto poseNoise = noiseModel::Diagonal::Sigmas(
         (Vector(6) << Vector3::Constant(0.05), Vector3::Constant(0.05))
             .finished());  // 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
+
+    // Noise model consecutive poses
+    Vector3 translation_noise(0.5, 0.1, 0.1);
+    noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Sigmas(
+        (Vector(6) << translation_noise, Vector3::Constant(0.001))
+        .finished());
+
+    const Cal3_S2Stereo::shared_ptr Kstereo(
+      new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
+
+    
+
     NonlinearFactorGraph graph;
     int N = 2; //poses.size();
     map<int, map<int, Point3f> > landmarks;
     map<int, map<int, Point3f> >::iterator it;
     graph.addPrior(Symbol('x', 0), poses[0], poseNoise);
     // Create the data structure to hold the initial estimate to the solution
+        
+    for (size_t i = 1; i < poses_between.size(); ++i) {
+        graph.add(BetweenFactor<Pose3>(Symbol('x', i-1), Symbol('x', i), poses_between[i], odometryNoise));
+    }
+
     Values initialEstimate;
     for (size_t i = 0; i < poses.size(); ++i) {
         if (i < start_pose) {
@@ -35,6 +59,8 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
             initialEstimate.insert(Symbol('x', i), poses[i]);
         }
     }
+
+
     vector<Point3> landmarks3d;
     int landmark_id_in_graph = 0;
     for ( it=KeypointMapper.begin() ; it !=  KeypointMapper.end(); it++ ) {
@@ -112,7 +138,7 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
                Y_avg += Y3DW;
                Z_avg += Z3DW;                
             }
-            GenericStereoFactor<Pose3, Point3> factor(StereoPoint2(x, uR, y), model, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kstereo);
+            GenericStereoFactor<Pose3, Point3> factor(StereoPoint2(x, uR, y), huber, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kstereo);
 
             //GenericProjectionFactor<Pose3, Point3, Cal3_S2> factor(measurement, noise, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kgt);
             projectionFactors.push_back(factor);
@@ -137,7 +163,7 @@ ret_optimize Reoptimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
         // the first landmark. This fixes the scale by indicating the distance between
         // the first camera and the first landmark. All other landmark positions are
         // interpreted using this scale.
-        auto pointNoise = noiseModel::Isotropic::Sigma(3, 0.1);
+        
         if(landmark_id_in_graph == 0) {
             graph.addPrior(Symbol('l', 0), landmark3d, pointNoise);  // add directly to graph
         }
@@ -204,18 +230,37 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
                                   vector<string> frames, 
                                   vector<int> considered_poses, 
                                   vector<Pose3> poses,
+                                  vector<Pose3> poses_between,
                                   map<int,int>* landmark_id_to_graph_id) {
     // Define the camera observation noise model
-    auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 2 pixel in u and v
+    //auto noise = noiseModel::Isotropic::Sigma(2, 2.0);  // 2 pixel in u and v
+
+    // pointNoise is the 3D landmark associated pose in x, y, and z
+    auto pointNoise = noiseModel::Isotropic::Sigma(3, 0.1);
+    
+    // model is the stereo factor noise model
+    const auto model = noiseModel::Isotropic::Sigma(3, 3);    
+    auto huber = noiseModel::Robust::Create(noiseModel::mEstimator::Huber::Create(1.3), model);
+
+    // Prior noise
+    auto poseNoise = noiseModel::Diagonal::Sigmas(
+        (Vector(6) << Vector3::Constant(0.05), Vector3::Constant(0.05))
+            .finished());  // 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
+
+    // Noise model consecutive poses
+    Vector3 translation_noise(0.5, 0.1, 0.1);
+    noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Sigmas(
+        (Vector(6) << translation_noise, Vector3::Constant(0.001))
+        .finished());    
+    
+    
     const Cal3_S2Stereo::shared_ptr Kstereo(
       new Cal3_S2Stereo(focal_length, fy, 0, cx, cy, baseline));
-    const auto model = noiseModel::Isotropic::Sigma(3, 3);    
+
     // Create a Factor Graph and Values to hold the new data
     NonlinearFactorGraph graph;
     NonlinearFactorGraph graph_cp;
-    auto poseNoise = noiseModel::Diagonal::Sigmas(
-        (Vector(6) << Vector3::Constant(0.2), Vector3::Constant(0.6))
-            .finished());  // 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
+
     graph.addPrior(Symbol('x', 0), poses[0], poseNoise);  // add directly to graph
     int N = 2; //poses.size();
     map<int, map<int, Point3f> > landmarks;
@@ -231,6 +276,11 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
         initialEstimate.insert(
             Symbol('x', i), poses[i]);
     }
+    
+    for (size_t i = 1; i < poses_between.size(); ++i) {
+        graph.add(BetweenFactor<Pose3>(Symbol('x', i-1), Symbol('x', i), poses_between[i], odometryNoise));
+    }
+
     vector<Point3> landmarks3d;
     int landmark_id_in_graph = 0;
     cout << "SIZE OF KEYPOINTMAPPER " << KeypointMapper.size() << endl;
@@ -302,7 +352,7 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
             //   StereoPoint2(uL, uR, v), model, Symbol('x', i), Symbol('l', j), Kstereo);
             //std::cout << "Adding factor " << std::endl;
             
-            GenericStereoFactor<Pose3, Point3> factor(StereoPoint2(x, uR, y), model, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kstereo);
+            GenericStereoFactor<Pose3, Point3> factor(StereoPoint2(x, uR, y), huber, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kstereo);
 
             //GenericProjectionFactor<Pose3, Point3, Cal3_S2> factor(measurement, noise, Symbol('x', pose_id), Symbol('l', landmark_id_in_graph), Kgt);
             projectionFactors.push_back(factor);
@@ -327,7 +377,7 @@ ret_optimize Optimize_from_stereo(map<int, map<int, Point3f>> KeypointMapper,
         // the first landmark. This fixes the scale by indicating the distance between
         // the first camera and the first landmark. All other landmark positions are
         // interpreted using this scale.
-        auto pointNoise = noiseModel::Isotropic::Sigma(3, 0.1);
+
         if(landmark_id_in_graph == 0) {
             graph.addPrior(Symbol('l', 0), landmark3d,
                         pointNoise);  // add directly to graph

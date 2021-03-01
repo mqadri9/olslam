@@ -190,6 +190,7 @@ int main(int argc, char* argv[]) {
     vector<vector<Point3f>> each_frames_centers;
     int pose_id = 1;
     vector<Pose3> poses;
+    vector<Pose3> poses_between;
     vector<Pose3> poses_tmp;
     map<int, map<int, Point3f>> KeypointMapper;
     map<string,int> prevKeypointIndexer;
@@ -210,7 +211,7 @@ int main(int argc, char* argv[]) {
     Cal3_S2::shared_ptr Kgt(new Cal3_S2(focal_length, focal_length, 0 /* skew */, cx, cy));
     ret_optimize ret_optimizer;
     string detector = "combined";
-    for(int i=0; i<41 ; i++) {
+    for(int i=0; i<100 ; i++) {
         framesImages.push_back(to_string(i));
         cout << "Processing a new image index:" << i << endl;
         Frame frame;
@@ -470,9 +471,16 @@ int main(int argc, char* argv[]) {
             cout << m1.size() << endl;
             cout << m2.size() << endl;
             retPose p = getPose(m1, m2, "icp"); 
+            //Rot3 R(1, 0, 0, 0, 1, 0, 0, 0, 1);
+            //Point3 t;
+            //t(0) = p.t(0);
+            //t(1) = 0;
+            //t(2) = 0;
+            //Pose3 pose(R, t);
             Pose3 pose(p.R, p.t);
-            cout << pose << endl;
+            cout << "POSE OUTPUT " << pose << endl;
             poses_tmp.push_back(poses.back()*pose);
+            poses_between.push_back(pose);
             // Need to construct the landmarks array
             // Initialize and create gtsam graph here
             // i is the image index
@@ -487,7 +495,7 @@ int main(int argc, char* argv[]) {
                     prevKeypointIndexer[getKpKey3(dst[l])] = l;
                 }
                 
-                ret_optimizer = Optimize_from_stereo(KeypointMapper, Kgt, framesImages, considered_poses, poses_tmp, &landmark_id_to_graph_id);         
+                ret_optimizer = Optimize_from_stereo(KeypointMapper, Kgt, framesImages, considered_poses, poses_tmp, poses_between, &landmark_id_to_graph_id);         
                 graph = ret_optimizer.graph;
                 gtsam::Values result = ret_optimizer.result;
                 int init_pose = 0; 
@@ -529,7 +537,8 @@ int main(int argc, char* argv[]) {
                                                         Kgt, 
                                                         framesImages, 
                                                         considered_poses,
-                                                        poses_tmp, 
+                                                        poses_tmp,
+                                                        poses_between, 
                                                         &landmark_id_to_graph_id,
                                                         pose_id,
                                                         ret_optimizer);

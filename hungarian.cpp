@@ -162,6 +162,26 @@ void find_right_score(unordered_map<int, float>*right_map, vector<Point2f>*cente
     (*right_map)[k] = total_dist;
 }
 
+void save_matrix(vector<vector<float>> cost)
+{
+    ofstream out(root_directory + "/tmp_cost.txt");
+
+    for (int i = 0; i < cost.size(); ++i)
+    {
+        for (int j = 0; j < cost.size(); ++j)
+            out << cost[i][j] << ' ';
+        out << endl;
+    }
+}
+void fill_row(std::vector<float> & row)
+{
+    std::generate(row.begin(), row.end(), [](){ return rand()%(1000-100 + 1) + 100; }); 
+}
+
+void fill_matrix(std::vector<std::vector<float>> & mat)
+{
+    std::for_each(mat.begin(), mat.end(), fill_row);
+}
 vector<vector<float>> run_(vector<Point2f> centers_l_filtered, 
                            vector<Point2f> centers_r_filtered,
                            vector<vector<float>> bboxes_l_filtered,
@@ -184,8 +204,14 @@ vector<vector<float>> run_(vector<Point2f> centers_l_filtered,
     if(centers_l_filtered.size() == 0 || centers_r_filtered.size() == 0) {
         return stereo_correspondences;
     }
+    int max_n = 1000;
+    int min_n = 100;
+
+
     int ss = max(centers_l_filtered.size(), centers_r_filtered.size());
-    std::vector<std::vector<double>> HungarianCost(ss, std::vector<double>(ss, 10e8));
+    std::vector<std::vector<float>> HungarianCost(4096, std::vector<float>(4096, rand()%(max_n-min_n + 1) + min_n));
+    fill_matrix(HungarianCost);
+    cout << "SIZE OF HUNGARIAN " << HungarianCost.size() << endl;
     for(int k=0; k < centers_l_filtered.size(); k++)
     {
         vector<float> bb_left = bboxes_l_filtered[k];
@@ -203,46 +229,110 @@ vector<vector<float>> run_(vector<Point2f> centers_l_filtered,
             //    HungarianCost[k][j] = 10e8;
             //}
             if(xdist < 50) {
-                HungarianCost[k][j] = 10e8;
+                HungarianCost[k][j] = rand()%(max_n-min_n + 1) + min_n;
             }
             else if(vdist > vertical_threshold) {
-                HungarianCost[k][j] = 10e8;
+                HungarianCost[k][j] = rand()%(max_n-min_n + 1) + min_n;
             }
             else{
                 HungarianCost[k][j] = vdist;//*abs(area_left - area_right)*100;
                 //HungarianCost[k][j] += max(left_to_left.at(k), right_to_left.at(j))/min(left_to_left.at(k), right_to_left.at(j))*10 ;
                 //HungarianCost[k][j] += max(left_to_right.at(k), right_to_right.at(j))/min(left_to_right.at(k), right_to_right.at(j))*10;
-                HungarianCost[k][j] += 10*max(left_to_left.at(k), right_to_left.at(j))/(min(left_to_left.at(k), right_to_left.at(j)) + 0.01) ;
-                HungarianCost[k][j] += 10*max(left_to_right.at(k), right_to_right.at(j))/(min(left_to_right.at(k), right_to_right.at(j)) + 0.01); 
-                HungarianCost[k][j] += 10*max(left_to_top.at(k), right_to_top.at(j))/(min(left_to_top.at(k), right_to_top.at(j)) +0.01) ;
-                HungarianCost[k][j] += 10*max(left_to_bottom.at(k), right_to_bottom.at(j))/(min(left_to_bottom.at(k), right_to_bottom.at(j)) +0.01); 
+                HungarianCost[k][j] += 10.0*max(left_to_left.at(k), right_to_left.at(j))/(min(left_to_left.at(k), right_to_left.at(j)) + 0.01) ;
+                HungarianCost[k][j] += 10.0*max(left_to_right.at(k), right_to_right.at(j))/(min(left_to_right.at(k), right_to_right.at(j)) + 0.01); 
+                HungarianCost[k][j] += 10.0*max(left_to_top.at(k), right_to_top.at(j))/(min(left_to_top.at(k), right_to_top.at(j)) +0.01) ;
+                HungarianCost[k][j] += 10.0*max(left_to_bottom.at(k), right_to_bottom.at(j))/(min(left_to_bottom.at(k), right_to_bottom.at(j)) +0.01); 
                 //cout << max(left_to_top.at(k), right_to_top.at(j)) - min(left_to_top.at(k), right_to_top.at(j)) << endl;
                 //cout << max(left_to_right.at(k), right_to_right.at(j)) - min(left_to_right.at(k), right_to_right.at(j)) << endl;          
                 //cout << max(left_to_left.at(k), right_to_left.at(j))/min(left_to_left.at(k), right_to_left.at(j)) << endl;
                 //cout << max(left_to_right.at(k), right_to_right.at(j))/min(left_to_right.at(k), right_to_right.at(j)) << endl;
                 //cout << "====================================" << endl;
+                
+                HungarianCost[k][j] = HungarianCost[k][j]/1000;
+                //cout << k << " | " << j << " " << HungarianCost[k][j] << endl;
             }
         }
         
     }
-    HungarianAlgorithm HungAlgo;
-    vector<int> assignment;
-
-    double cost = HungAlgo.Solve(HungarianCost, assignment);
-    double costfiltered = 0;
     
+
+    save_matrix(HungarianCost);
+    cout << "Calling hungarian cost cuda solver " << endl;
+    cout << root_directory + std::string("/HungarianCUDA ") + root_directory + "/tmp_cost.txt" << endl;
+    system((root_directory + std::string("/HungarianCUDA ") + root_directory + "/tmp_cost.txt").c_str()); 
+    //system((std::string("bash ") + root_directory + std::string("/run_solver.sh")).c_str()); 
+    //cout << "Sleeping for 2 s " << endl;
+    //sleep(2);
+    HungarianAlgorithm HungAlgo;
+    //vector<int> assignment;
+    cout << "Computed hungarian matching " << endl;
+    vector<vector<int>> assignment;
+
+    std::ifstream fileStream(root_directory + "/build/gpu-solution.txt");
+    if (!fileStream.is_open())
+    {
+        std::cout << "Exiting unable to open file" << std::endl;
+        exit(0);
+    }
+
+    std::string line;
+
+    while(getline(fileStream, line, '\n')) {
+        std::stringstream ss(line);
+        std::vector<int> numbers;
+        std::string in_line;
+        while(getline (ss, in_line, ' ')) {
+          numbers.push_back(std::stoi(in_line, 0));
+        }
+        //cout << numbers[0] << " | " << numbers[1] << endl;
+        assignment.push_back(numbers);
+    }
+    //std::remove((root_directory + "/build/gpu-solution.txt").c_str());
+    //cout << assignment[0][0] << " | " << assignment[0][1]  << endl;
+    //double cost = HungAlgo.Solve(HungarianCost, assignment);
+    
+    double costfiltered = 0;
+
+    vector<float> disparity;
+    accumulator_set<double, stats<tag::mean, tag::variance> > acc;
+
+    vector<int> indices;
     for (unsigned int x = 0; x < HungarianCost.size(); x++) {
         //std::cout << x << "," << assignment[x] << "\t";
         vector<float> assign;
-        if(x != -1 && assignment[x] != -1) {
-            //cout << HungarianCost[x][assignment[x]] << endl;
-            if(HungarianCost[x][assignment[x]] > cost_threshold) continue;
-            costfiltered+=HungarianCost[x][assignment[x]];
-            stereo_correspondences.push_back({index_centers_l[x].x, index_centers_l[x].y, index_centers_r[assignment[x]].x, index_centers_r[assignment[x]].y});
+        //if(x != -1 && assignment[x] != -1) {
+            //cout << assignment[x][0] << " | " << assignment[x][1] << endl;
+            if(HungarianCost[assignment[x][0]][assignment[x][1]] > (float)cost_threshold/1000) continue;
+            //cout << index_centers_l[assignment[x][0]].x - index_centers_r[assignment[x][1]].x << endl;
+            if(index_centers_l[assignment[x][0]].x - index_centers_r[assignment[x][1]].x < 50) {
+                cout << HungarianCost[assignment[x][0]][assignment[x][1]] << endl;
+                cout << index_centers_l[assignment[x][0]].x - index_centers_r[assignment[x][1]].x << endl;
+                continue;
+            }
+            indices.push_back(x);
+            disparity.push_back(index_centers_l[assignment[x][0]].x - index_centers_r[assignment[x][1]].x);
+            //cout << assignment[x][0] << " | " << assignment[x][1] << endl;
+            //cout << HungarianCost[assignment[x][0]][assignment[x][1]] << endl;
+            //costfiltered+=HungarianCost[assignment[x][0]][assignment[x][1]];
+            //stereo_correspondences.push_back({index_centers_l[assignment[x][0]].x, index_centers_l[assignment[x][0]].y, index_centers_r[assignment[x][1]].x, index_centers_r[assignment[x][1]].y});
+        //}
+    }
+    for_each(disparity.begin(), disparity.end(), bind<void>(ref(acc), _1));       
+    float meanr = boost::accumulators::mean(acc);
+    float stdr = sqrt(variance(acc));
+    cout << "MEAN " << meanr << " STD " << stdr << endl;
+    int ii = 0;
+    for (unsigned int x = 0; x < HungarianCost.size(); x++) {    
+        if (std::count(indices.begin(), indices.end(), x)) {
+            if(disparity[ii] > meanr - stdr/2 || disparity[ii] < meanr + stdr/2) {
+                costfiltered+=HungarianCost[assignment[x][0]][assignment[x][1]];
+                //cout << index_centers_l[assignment[x][0]].x - index_centers_r[assignment[x][1]].x << endl;
+                stereo_correspondences.push_back({index_centers_l[assignment[x][0]].x, index_centers_l[assignment[x][0]].y, index_centers_r[assignment[x][1]].x, index_centers_r[assignment[x][1]].y});
+            }     
+            ii++;       
         }
     }
-
-    std::cout << "\ncost: " << cost << " | cost after filtering: " << costfiltered << std::endl;
+    //std::cout << "\ncost: " << cost << " | cost after filtering: " << costfiltered << std::endl; 
     return stereo_correspondences;
 }
 
@@ -271,14 +361,14 @@ vector<vector<float>> run_hungarian(r left, r right, int img_width, int vertical
 
     // Filter out centers and bboxes;
     for(int ii=0; ii<centers_l.size(); ii++) {
-        if(centers_l[ii].x > horizontal_threshold) {
+        if(centers_l[ii].x > horizontal_threshold && centers_l[ii].x < img_width - horizontal_threshold ) {
             centers_l_filtered.push_back(centers_l[ii]);
             bboxes_l_filtered.push_back(bboxes_l[ii]);
         }
     }
 
     for(int ii=0; ii<centers_r.size(); ii++) {
-        if(centers_r[ii].x < img_width - horizontal_threshold) {
+        if(centers_r[ii].x < img_width - horizontal_threshold && centers_r[ii].x > horizontal_threshold) {
             centers_r_filtered.push_back(centers_r[ii]);
             bboxes_r_filtered.push_back(bboxes_r[ii]);
         }
@@ -333,8 +423,8 @@ vector<vector<float>> run_hungarian(r left, r right, int img_width, int vertical
     float th_low_l;
     float th_high_l;
     if (std_r < mean_r/2) {
-        th_low_r = 3*mean_r; //- std_r/2;
-        th_high_r = 3*mean_r; //+ std_r/2;
+        th_low_r = 100*mean_r; //- std_r/2;
+        th_high_r = 100*mean_r; //+ std_r/2;
     }
     else {
         th_low_r = 100*mean_r; //- std_r/4 ;
@@ -342,8 +432,8 @@ vector<vector<float>> run_hungarian(r left, r right, int img_width, int vertical
     }
 
     if (std_l < mean_l/2) {
-        th_low_l = 3*mean_l ;//- std_l/2;
-        th_high_l = 3*mean_l ;//+ std_l/2;
+        th_low_l = 100*mean_l ;//- std_l/2;
+        th_high_l = 100*mean_l ;//+ std_l/2;
     }
     else {
         th_low_l = 100*mean_l; //- std_l/4;
